@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import { IOTP } from "./auth.types";
+import { IOTP } from "../types/auth.types";
 
 const OTPSchema: Schema = new Schema({
   user_id: { type: Schema.Types.ObjectId, ref: "User", required: true },

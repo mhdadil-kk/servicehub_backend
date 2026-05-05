@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import authRoutes from "./modules/auth/auth.routes";
-import adminRoutes from "./modules/users/admin.routes";
+import authRoutes from "./routes/auth.routes";
+import adminRoutes from "./routes/admin.routes";
 import { globalErrorHandler } from "./middlewares/error.middleware";
 import { logger } from "./utils/logger";
 

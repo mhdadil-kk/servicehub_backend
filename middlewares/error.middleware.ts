@@ -6,13 +6,14 @@ import { HttpStatusCode } from "../types/http";
 import { createErrorResponse } from "../types/response";
 
 export const globalErrorHandler = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   err: any,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   let statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
-  let message = err.message || ERROR_MESSAGES.INTERNAL_SERVER_ERROR;
+  let message: string;
 
   if (err instanceof AppError) {
     statusCode = err.statusCode;

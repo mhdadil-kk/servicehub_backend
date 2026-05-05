@@ -1,5 +1,5 @@
-import { UserModel, IUser } from "../users/user.model";
-import { BaseRepository, IRepository } from "../common/base.repository";
+import { UserModel, IUser } from "../models/user.model";
+import { BaseRepository, IRepository } from "../repositories/base.repository";
 
 export interface IUserRepository extends IRepository<IUser> {
   findByEmail(email: string): Promise<IUser | null>;
@@ -13,4 +13,6 @@ export class AuthRepository extends BaseRepository<IUser> implements IUserReposi
   async findByEmail(email: string): Promise<IUser | null> {
     return await this.model.findOne({ email }).exec();
   }
+
+ 
 }

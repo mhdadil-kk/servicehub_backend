@@ -1,14 +1,14 @@
-import { IUserRepository } from "./auth.repository";
-import { IOTPRepository } from "./otp.repository";
-import { IUser } from "../users/user.types";
-import { IMailer } from "../../utils/mailer";
-import { generateTokens } from "../../utils/jwt";
-import { BadRequestError, UnauthorizedError, NotFoundError } from "../../utils/error";
-import { ERROR_MESSAGES } from "../../constants/messages";
+import { IUserRepository } from "../repositories/auth.repository";
+import { IOTPRepository } from "../repositories/otp.repository";
+import { IUser } from "../types/user.types";
+import { IMailer } from "../utils/mailer";
+import { generateTokens, verifyRefreshToken } from "../utils/jwt";
+import { BadRequestError, UnauthorizedError, NotFoundError } from "../utils/error";
+import { ERROR_MESSAGES } from "../constants/messages";
 import bcrypt from "bcrypt";
-import { OTPGenerator } from "../../utils/otp";
+import { OTPGenerator } from "../utils/otp";
 import { OAuth2Client } from "google-auth-library";
-import { logger } from "../../utils/logger";
+import { logger } from "../utils/logger";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -20,9 +20,11 @@ export interface IAuthService {
   verifyEmail(email: string, otp: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
   resetPassword(email: string, otp: string, newPassword: string): Promise<void>;
   googleLogin(token: string, role?: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
+  refreshToken(token: string): Promise<{ accessToken: string }>;
 }
 
 export class AuthService implements IAuthService {
+
   private userRepository: IUserRepository;
   private otpRepository: IOTPRepository;
   private mailer: IMailer;
@@ -140,7 +142,6 @@ export class AuthService implements IAuthService {
       let user = await this.userRepository.findByEmail(email);
 
       if (!user) {
-        // If it's a new user, use the provided role or default to "user"
         const assignedRole = role === "provider" ? "provider" : "user";
         const status = assignedRole === "provider" ? "pending" : "approved";
 
@@ -163,4 +164,15 @@ export class AuthService implements IAuthService {
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
+
+  async refreshToken(token: string) {
+    const decoded = verifyRefreshToken(token);
+    const user = await this.userRepository.findById(decoded.id);
+    if (!user || user.isDeleted) throw new UnauthorizedError("User not found or blocked");
+    
+    // Generate ONLY a new access token
+    const { accessToken } = generateTokens(user.id, user.role);
+    return { accessToken };
+  }
 }
+

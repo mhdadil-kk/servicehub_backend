@@ -5,9 +5,9 @@ export interface IRepository<T> {
   findById(id: string, includeDeleted?: boolean): Promise<T | null>;
   findOne(filter: FilterQuery<T>, includeDeleted?: boolean): Promise<T | null>;
   update(id: string, data: UpdateQuery<T>): Promise<T | null>;
-  delete(id: string): Promise<boolean>; // Hard delete
-  softDelete(id: string): Promise<boolean>; // Soft delete
-  findAll(filter?: FilterQuery<T>, includeDeleted?: boolean): Promise<T[]>;
+  delete(id: string): Promise<boolean>;
+  softDelete(id: string): Promise<boolean>; 
+  findAll(filter?: FilterQuery<T>, includeDeleted?: boolean,sort?:any): Promise<T[]>;
 }
 
 export abstract class BaseRepository<T extends Document> implements IRepository<T> {
@@ -52,11 +52,17 @@ export abstract class BaseRepository<T extends Document> implements IRepository<
     return !!result;
   }
 
-  async findAll(filter: FilterQuery<T> = {}, includeDeleted: boolean = false): Promise<T[]> {
+  async findAll(filter: FilterQuery<T> = {}, includeDeleted: boolean = false,sort?:any): Promise<T[]> {
     const query = { ...filter } as FilterQuery<T>;
     if (!includeDeleted) {
       Object.assign(query as object, { isDeleted: { $ne: true } });
     }
-    return await this.model.find(query).exec();
+
+    let mongoQuery = this.model.find(query);
+    if(sort){
+      mongoQuery = mongoQuery.sort(sort);
+    }
+
+    return await mongoQuery.exec();
   }
 }

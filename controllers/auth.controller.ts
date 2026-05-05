@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from "express";
-import { IAuthService } from "./auth.service";
-import { formatUserResponse } from "./auth.dto";
-import { HttpStatusCode } from "../../types/http";
-import { createSuccessResponse } from "../../types/response";
-import { SUCCESS_MESSAGES } from "../../constants/messages";
+import { IAuthService } from "../services/auth.service";
+import { formatUserResponse } from "../dtos/auth.dto";
+import { HttpStatusCode } from "../types/http";
+import { createSuccessResponse } from "../types/response";
+import { SUCCESS_MESSAGES } from "../constants/messages";
+import { BadRequestError } from "../utils/error";
+
 
 export class AuthController {
   private authService: IAuthService;
@@ -89,4 +91,17 @@ export class AuthController {
       );
     } catch (error) { next(error); }
   };
+
+  refresh = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { refreshToken } = req.body;
+      if (!refreshToken) throw new BadRequestError("Refresh token is required");
+      
+      const { accessToken } = await this.authService.refreshToken(refreshToken);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse({ accessToken }, "Token refreshed successfully")
+      );
+    } catch (error) { next(error); }
+  };
 }
+

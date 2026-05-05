@@ -1,11 +1,11 @@
 import express from "express";
-import { AuthController } from "./auth.controller";
-import { AuthService } from "./auth.service";
-import { AuthRepository } from "./auth.repository";
-import { OTPRepository } from "./otp.repository";
-import { Mailer } from "../../utils/mailer";
-import { validate } from "../../middlewares/validate.middleware";
-import { SignupSchema, LoginSchema, OTPRequestSchema, OTPVerifySchema, ResetPasswordSchema } from "./auth.dto";
+import { AuthController } from "../controllers/auth.controller";
+import { AuthService } from "../services/auth.service";
+import { AuthRepository } from "../repositories/auth.repository";
+import { OTPRepository } from "../repositories/otp.repository";
+import { Mailer } from "../utils/mailer";
+import { validate } from "../middlewares/validate.middleware";
+import { SignupSchema, LoginSchema, OTPRequestSchema, OTPVerifySchema, ResetPasswordSchema, GoogleLoginSchema, RefreshTokenSchema } from "../dtos/auth.dto";
 
 const router = express.Router();
 
@@ -45,6 +45,14 @@ router.post("/reset-password",
     authController.resetPassword
 );
 
-router.post("/google", authController.googleLogin);
+router.post("/google", 
+    validate(GoogleLoginSchema),
+    authController.googleLogin
+);
+
+router.post("/refresh",
+    validate(RefreshTokenSchema),
+    authController.refresh
+);
 
 export default router;

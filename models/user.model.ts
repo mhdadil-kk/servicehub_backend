@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import { IUser } from "./user.types";
+import { IUser } from "../types/user.types";
 
 const UserSchema: Schema = new Schema(
   {
@@ -18,7 +18,7 @@ const UserSchema: Schema = new Schema(
       enum: ["approved", "rejected", "pending"], 
       default: "approved" 
     },
-    isDeleted: { type: Boolean, default: false }, // Soft delete support
+    isDeleted: { type: Boolean, default: false },
   },
   { 
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

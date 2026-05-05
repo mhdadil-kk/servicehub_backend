@@ -10,7 +10,6 @@ export const SignupSchema = z.object({
   })
 });
 
-
 export const LoginSchema = z.object({
   body: z.object({
     email: z.string().email("Invalid email format"),
@@ -41,12 +40,27 @@ export const ResetPasswordSchema = z.object({
   })
 });
 
-import { IUser } from "../users/user.types";
+export const GoogleLoginSchema = z.object({
+  body: z.object({
+    token: z.string().min(1, "Google token is required"),
+    role: z.enum(["user", "provider"])
+  })
+});
+
+export const RefreshTokenSchema = z.object({
+  body: z.object({
+    refreshToken: z.string().min(1, "Refresh token is required")
+  })
+});
+
+
+
+import { IUser } from "../types/user.types";
 
 export const formatUserResponse = (user: IUser) => {
   const userObj = ('toObject' in user && typeof user.toObject === 'function') 
     ? user.toObject() 
     : user;
-  const { password, __v, isDeleted, ...safeUser } = userObj as any; // Cast only for destructuring unknown fields
+  const { password, __v, isDeleted, ...safeUser } = userObj as any; 
   return safeUser;
 };

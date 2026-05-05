@@ -1,5 +1,5 @@
-import { OTPModel, IOTP } from "./otp.model";
-import { BaseRepository, IRepository } from "../common/base.repository";
+import { OTPModel, IOTP } from "../models/otp.model";
+import { BaseRepository, IRepository } from "../repositories/base.repository";
 
 /**
  * ABSTRACTION: IOTPRepository Interface
