@@ -6,7 +6,6 @@ import { HttpStatusCode } from "../types/http";
 import { createErrorResponse } from "../types/response";
 
 export const globalErrorHandler = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   err: any,
   _req: Request,
   res: Response,
@@ -23,7 +22,6 @@ export const globalErrorHandler = (
     message = ERROR_MESSAGES.INTERNAL_SERVER_ERROR;
   }
 
-  // Handle specific MongoDB or other library errors
   if (err.name === "ValidationError") {
     statusCode = HttpStatusCode.BAD_REQUEST;
     message = ERROR_MESSAGES.VALIDATION_ERROR;
@@ -41,7 +39,6 @@ export const globalErrorHandler = (
 
   const response = createErrorResponse(message);
   
-  // Include stack trace only in development
   if (process.env.NODE_ENV === "development") {
     response.errors = err.stack;
   }

@@ -1,5 +1,4 @@
 import { Response, NextFunction } from "express";
-import { BadRequestError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
 
 export class ForbiddenError extends Error {
@@ -10,7 +9,11 @@ export class ForbiddenError extends Error {
 }
 
 export const roleMiddleware = (allowedRoles: ("user" | "provider" | "admin")[]) => {
-  return (req: any, res: Response, next: NextFunction) => {
+  return (
+    req: any,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const userRole = req.user?.role;
       if (!allowedRoles.includes(userRole)) {

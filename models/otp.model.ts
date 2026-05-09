@@ -12,7 +12,6 @@ const OTPSchema: Schema = new Schema({
   },
 });
 
-// Automatically delete document after expiry
 OTPSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 
 export const OTPModel = mongoose.model<IOTP>("OTP", OTPSchema);

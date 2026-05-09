@@ -1,14 +1,7 @@
 import { Model, Document, FilterQuery, UpdateQuery } from "mongoose";
 
-export interface IRepository<T> {
-  create(data: Partial<T>): Promise<T>;
-  findById(id: string, includeDeleted?: boolean): Promise<T | null>;
-  findOne(filter: FilterQuery<T>, includeDeleted?: boolean): Promise<T | null>;
-  update(id: string, data: UpdateQuery<T>): Promise<T | null>;
-  delete(id: string): Promise<boolean>;
-  softDelete(id: string): Promise<boolean>; 
-  findAll(filter?: FilterQuery<T>, includeDeleted?: boolean,sort?:any): Promise<T[]>;
-}
+import { IRepository } from "./IRepository";
+
 
 export abstract class BaseRepository<T extends Document> implements IRepository<T> {
   protected model: Model<T>;
@@ -52,7 +45,7 @@ export abstract class BaseRepository<T extends Document> implements IRepository<
     return !!result;
   }
 
-  async findAll(filter: FilterQuery<T> = {}, includeDeleted: boolean = false,sort?:any): Promise<T[]> {
+  async findAll(filter: FilterQuery<T> = {}, includeDeleted: boolean = false, sort?: Record<string, number>, limit?: number, skip?: number): Promise<T[]> {
     const query = { ...filter } as FilterQuery<T>;
     if (!includeDeleted) {
       Object.assign(query as object, { isDeleted: { $ne: true } });
@@ -62,7 +55,21 @@ export abstract class BaseRepository<T extends Document> implements IRepository<
     if(sort){
       mongoQuery = mongoQuery.sort(sort);
     }
+    if(skip){
+      mongoQuery = mongoQuery.skip(skip);
+    }
+    if(limit){
+      mongoQuery = mongoQuery.limit(limit);
+    }
 
     return await mongoQuery.exec();
+  }
+
+  async count(filter: FilterQuery<T> = {}, includeDeleted: boolean = false): Promise<number> {
+    const query = { ...filter } as FilterQuery<T>;
+    if (!includeDeleted) {
+      Object.assign(query as object, { isDeleted: { $ne: true } });
+    }
+    return await this.model.countDocuments(query).exec();
   }
 }

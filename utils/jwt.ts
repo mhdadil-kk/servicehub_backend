@@ -27,7 +27,7 @@ export const verifyAccessToken = (token: string) => {
   const { access } = getSecrets();
   try {
     return jwt.verify(token, access) as { id: string; role: string };
-  } catch (error) {
+  } catch (_error) {
     throw new AppError("Invalid or expired access token", 401);
   }
 };
@@ -36,7 +36,7 @@ export const verifyRefreshToken = (token: string) => {
   const { refresh } = getSecrets();
   try {
     return jwt.verify(token, refresh) as { id: string; role: string };
-  } catch (error) {
+  } catch (_error) {
     throw new AppError("Invalid or expired refresh token", 401);
   }
 };

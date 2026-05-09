@@ -16,7 +16,7 @@ app.listen(PORT, () => {
 });
 
 
-process.on("unhandledRejection", (err: any) => {
-  logger.error("UNHANDLED REJECTION!  Shutting down...", err);
+process.on("unhandledRejection", (err: unknown) => {
+  logger.error("UNHANDLED REJECTION!  Shutting down...", err instanceof Error ? err : new Error(String(err)));
   process.exit(1);
 });
