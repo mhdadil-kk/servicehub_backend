@@ -14,8 +14,8 @@ export const globalErrorHandler = (
   let statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
   let message: string;
 
-  if (err instanceof AppError) {
-    statusCode = err.statusCode;
+  if (err instanceof AppError || err.statusCode) {
+    statusCode = err.statusCode || statusCode;
     message = err.message;
   } else {
     logger.error(`Unexpected application error: ${err.message}`, err);

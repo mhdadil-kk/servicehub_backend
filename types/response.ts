@@ -6,9 +6,7 @@ export interface ApiResponse<T = unknown> {
   timestamp: string;
 }
 
-/**
- * Standard factory function for successful responses
- */
+
 export const createSuccessResponse = <T>(data: T, message?: string): ApiResponse<T> => ({
   success: true,
   message,
@@ -16,9 +14,6 @@ export const createSuccessResponse = <T>(data: T, message?: string): ApiResponse
   timestamp: new Date().toISOString(),
 });
 
-/**
- * Standard factory function for error responses
- */
 export const createErrorResponse = (message: string, errors?: unknown): ApiResponse => ({
   success: false,
   message,

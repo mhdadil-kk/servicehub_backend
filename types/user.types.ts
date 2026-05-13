@@ -9,7 +9,7 @@ export interface IUser extends Document {
   is_verified: boolean;
   status: "active" | "suspended" | "pending";
   id: string;
-  isDeleted: boolean; // For SOFT DELETE
+  isDeleted: boolean;
   created_at: Date;
   updated_at: Date;
 }

@@ -44,11 +44,43 @@ router.get("/providers",
     adminController.getProviders
 );
 
+router.get("/providers/:id",
+    authMiddleware,
+    roleMiddleware(["admin"]),
+    adminController.getProviderDetail
+);
+
+router.post("/providers/:id/verify",
+    authMiddleware,
+    roleMiddleware(["admin"]),
+    adminController.verifyProvider
+);
+
 router.patch("/providers/:id/status",
     authMiddleware,
     roleMiddleware(["admin"]),
     validate(UpdateStatusSchema),
     adminController.updateUserStatus
+);
+
+// Service Category Management
+router.get("/services",
+    authMiddleware,
+    roleMiddleware(["admin"]),
+    adminController.getAllServices
+);
+
+router.post("/services",
+    authMiddleware,
+    roleMiddleware(["admin"]),
+    adminController.addService
+);
+
+router.delete("/services/:id",
+    authMiddleware,
+    roleMiddleware(["admin"]),
+    validate(IdParamSchema),
+    adminController.deleteService
 );
 
 

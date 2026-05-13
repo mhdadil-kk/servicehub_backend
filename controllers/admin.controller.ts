@@ -51,7 +51,7 @@ export class AdminController {
       }));
     } catch (error: unknown) {
       next(error);
-    }
+    } 
   };
 
 
@@ -89,6 +89,52 @@ export class AdminController {
     }
   };
 
+  addService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const service = await this._adminService.addService(req.body);
+      res.status(HttpStatusCode.CREATED).json(createSuccessResponse(service, "Service category created successfully"));
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+
+  getAllServices = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const services = await this._adminService.getAllServices();
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(services));
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+
+  deleteService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const id = req.params.id;
+      await this._adminService.deleteService(id);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Service category deleted successfully"));
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
 
 
+  getProviderDetail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const provider = await this._adminService.getProviderDetail(req.params.id);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(provider));
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+
+  verifyProvider = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const id = req.params.id;
+      const { status, remarks } = req.body;
+      await this._adminService.verifyProvider(id, status, remarks);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, `Provider ${status} successfully`));
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
 }

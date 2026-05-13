@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes";
 import adminRoutes from "./routes/admin.routes";
+import serviceRoutes from "./routes/service.routes";
+import providerRoutes from "./routes/provider.routes";
 import { globalErrorHandler } from "./middlewares/error.middleware";
 import { logger } from "./utils/logger";
 
@@ -29,6 +31,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/services", serviceRoutes);
+app.use("/api/provider", providerRoutes);
 
 
 app.use(globalErrorHandler);
