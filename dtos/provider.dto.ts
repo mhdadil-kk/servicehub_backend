@@ -2,8 +2,13 @@ import { z } from "zod";
 
 export const ProfileUpdateSchema = z.object({
   body: z.object({
+    name: z.string().min(2, "Name must be at least 2 characters long").optional(),
+    phone: z.string().min(10, "Phone number must be at least 10 digits").optional(),
     bio: z.string().min(20, "Bio should be at least 20 characters long").optional(),
-    serviceRadius: z.string().transform(val => Number(val)).optional(), // Multer sends everything as string
+    serviceRadius: z.string().transform(val => Number(val)).optional(), 
+    address: z.string().min(5, "Address must be at least 5 characters long").optional(),
+    latitude: z.string().transform(val => Number(val)).optional(),
+    longitude: z.string().transform(val => Number(val)).optional(),
   })
 });
 

@@ -19,7 +19,7 @@ export class AdminController {
       const status = req.query.status as string; 
       const sort = req.query.sort as string;
       const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 10;
+      const limit = Number(req.query.limit) || 3;
       
       const { users, total } = await this._adminService.getAllUsers(search, status, sort, page, limit);
       res.status(HttpStatusCode.OK).json(createSuccessResponse({ 

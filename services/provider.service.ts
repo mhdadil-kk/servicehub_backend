@@ -5,6 +5,8 @@ import { NotFoundError } from "../utils/error";
 import { ProviderRepository } from "../repositories/provider.repository";
 import User from "../models/user.model";
 import ProviderProfile from "../models/providerProfile.model";
+import ProviderAvailability from "../models/providerAvailability.model";
+import { IProviderAvailability } from "../types/providerProfile.types";
 
 export class ProviderService implements IProviderService {
   private _providerRepository: IProviderRepository;
@@ -67,7 +69,33 @@ export class ProviderService implements IProviderService {
   }
 
   async getProfile(userId: string): Promise<IProviderProfile | null> {
-    // Repository doesn't handle complex populate yet, so we use model directly or update repo
-    return await ProviderProfile.findOne({ userId }).populate("serviceId");
+    return await ProviderProfile.findOne({ userId })
+      .populate("userId", "name email phone role status")
+      .populate("serviceId", "name description");
+  }
+
+  async getAvailability(userId: string): Promise<IProviderAvailability | null> {
+    const profile = await this._providerRepository.findOne({ userId });
+    if (!profile) throw new NotFoundError("Profile not found");
+
+    let availability = await ProviderAvailability.findOne({ providerId: profile._id });
+    if (!availability) {
+      // Create default if missing
+      availability = await ProviderAvailability.create({ providerId: profile._id });
+    }
+    return availability;
+  }
+
+  async updateAvailability(userId: string, data: any): Promise<IProviderAvailability> {
+    const profile = await this._providerRepository.findOne({ userId });
+    if (!profile) throw new NotFoundError("Profile not found");
+
+    const availability = await ProviderAvailability.findOneAndUpdate(
+      { providerId: profile._id },
+      { $set: data },
+      { new: true, upsert: true }
+    );
+    
+    return availability;
   }
 }

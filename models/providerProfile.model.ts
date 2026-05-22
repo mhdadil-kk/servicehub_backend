@@ -8,6 +8,18 @@ const ProviderProfileSchema: Schema = new Schema({
   serviceId: { type: Schema.Types.ObjectId, ref: "Service" },
   hourlyRate: { type: Number },
   serviceRadius: { type: Number, default: 25 },
+  address: { type: String },
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      required: false
+    },
+    coordinates: {
+      type: [Number],
+      required: false
+    }
+  },
   documents: { type: Array, default: [] },
   onboardingStep: { type: Number, default: 1 },
   onboardingStatus: { type: String, enum: ["pending", "in_review", "approved", "rejected"], default: "pending" },
@@ -19,5 +31,7 @@ const ProviderProfileSchema: Schema = new Schema({
     routingNumber: { type: String }
   }
 }, { timestamps: true });
+
+ProviderProfileSchema.index({ location: "2dsphere" });
 
 export default mongoose.model<IProviderProfile>("ProviderProfile", ProviderProfileSchema);

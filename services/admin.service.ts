@@ -119,11 +119,9 @@ export class AdminService implements IAdminService {
       throw new BadRequestError("Name and description are required");
     }
 
-    // Check if service already exists (including soft-deleted ones)
     const existingService = await this._serviceRepository.findOne({ name: data.name }, true);
     
     if (existingService) {
-      // If it exists but is marked as deleted, "revive" it
       if ((existingService as any).isDeleted) {
         return await this._serviceRepository.update(existingService._id, {
           description: data.description,
@@ -131,7 +129,6 @@ export class AdminService implements IAdminService {
           isActive: true
         }) as IService;
       }
-      // If it exists and is NOT deleted, throw the duplicate error
       throw new BadRequestError("A service with this name already exists");
     }
 
@@ -187,8 +184,8 @@ export class AdminService implements IAdminService {
     if (status === "approved") {
       await this._userRepository.update(userId, { is_verified: true, status: "active" });
     } else {
-      // If rejected, set status back to pending so they can fix it and resubmit
-      await this._userRepository.update(userId, { status: "pending" });
+      // If rejected, set status to rejected so they see the rejection reason and can click re-apply
+      await this._userRepository.update(userId, { status: "rejected" });
     }
   }
 }

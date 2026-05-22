@@ -6,5 +6,6 @@ const router = express.Router();
 const serviceController = new ServiceController();
 
 router.get("/", authMiddleware, serviceController.getActiveServices);
+router.get("/providers", authMiddleware, serviceController.getApprovedProviders);
 
 export default router;
