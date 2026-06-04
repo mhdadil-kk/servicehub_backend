@@ -17,6 +17,9 @@ export const globalErrorHandler = (
   if (err instanceof AppError || err.statusCode) {
     statusCode = err.statusCode || statusCode;
     message = err.message;
+  } else if (err instanceof Error && err.message.includes("allowed for profile photos")) {
+    statusCode = HttpStatusCode.BAD_REQUEST;
+    message = err.message;
   } else {
     logger.error(`Unexpected application error: ${err.message}`, err);
     message = ERROR_MESSAGES.INTERNAL_SERVER_ERROR;

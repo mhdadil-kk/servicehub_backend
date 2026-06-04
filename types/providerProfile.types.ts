@@ -35,6 +35,9 @@ export interface ITimeSlot {
   id: string;
   start: string;
   end: string;
+  startDate?: string;
+  endDate?: string;
+  rrule?: string;
 }
 
 export interface IDaySchedule {
@@ -51,6 +54,8 @@ export interface IDateOverride {
 
 export interface IProviderAvailability extends Document {
   providerId: mongoose.Types.ObjectId;
+  startDate?: string;
+  endDate?: string;
   weeklySchedule: {
     Monday: IDaySchedule;
     Tuesday: IDaySchedule;

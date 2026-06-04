@@ -57,7 +57,7 @@ export class ServiceController {
     $geoWithin: {
       $centerSphere: [
         [Number(longitude), Number(latitude)],
-        Number(radius) / 6378.1 // radius in KM
+        Number(radius) / 6378.1 
       ]
     }
   };
@@ -68,11 +68,21 @@ export class ServiceController {
     const page = Number(req.query.page) || 1;
     const skip = (page - 1) * limit;
 
-    // Apply pagination and count total documents
+    // Sorting
+    const sortBy = (req.query.sortBy as string) || "createdAt";
+    const sortOrder = (req.query.sortOrder as string) === "asc" ? 1 : -1;
+    const sortParams: any = {};
+    if (sortBy === "hourlyRate") {
+      sortParams.hourlyRate = sortOrder;
+    } else {
+      sortParams[sortBy] = sortOrder;
+    }
+
     const [providers, total] = await Promise.all([
       ProviderProfile.find(query)
         .populate("userId", "name email phone role status")
         .populate("serviceId", "name description")
+        .sort(sortParams)
         .limit(limit)
         .skip(skip)
         .exec(),
@@ -80,10 +90,9 @@ export class ServiceController {
     ]);
 
     const totalPages = Math.ceil(total / limit) || 1;
-    // Respond with paginated data and meta information
     res.status(HttpStatusCode.OK).json(createSuccessResponse({ providers, total, totalPages, page, limit }));
 
-    } catch (_error) {
+    } catch (error) {
       next(error);
     }
   };

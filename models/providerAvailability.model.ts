@@ -4,7 +4,10 @@ import { IProviderAvailability } from "../types/providerProfile.types";
 const TimeSlotSchema = new Schema({
   id: { type: String, required: true },
   start: { type: String, required: true },
-  end: { type: String, required: true }
+  end: { type: String, required: true },
+  startDate: { type: String, required: false },
+  endDate: { type: String, required: false },
+  rrule: { type: String, required: false }
 }, { _id: false });
 
 const DayScheduleSchema = new Schema({
@@ -21,6 +24,8 @@ const DateOverrideSchema = new Schema({
 
 const ProviderAvailabilitySchema = new Schema({
   providerId: { type: Schema.Types.ObjectId, ref: "ProviderProfile", required: true, unique: true },
+  startDate: { type: String, required: false }, // Format: YYYY-MM-DD
+  endDate: { type: String, required: false },   // Format: YYYY-MM-DD
   weeklySchedule: {
     Monday: { type: DayScheduleSchema, default: { isAvailable: false, slots: [] } },
     Tuesday: { type: DayScheduleSchema, default: { isAvailable: false, slots: [] } },

@@ -121,7 +121,7 @@ export class ProviderController {
         });
       }
 
-      profile.documents = newDocs; // Replace or append? Let's replace for a fresh submission
+      profile.documents = newDocs; 
       profile.onboardingStep = Math.max(profile.onboardingStep, 5);
       profile.onboardingStatus = "in_review";
 
@@ -183,7 +183,6 @@ export class ProviderController {
 
       await profile.save();
 
-      // Also reset the User model status back to pending
       await User.findByIdAndUpdate(userId, { status: "pending" });
 
       res.status(HttpStatusCode.OK).json(createSuccessResponse(profile, "Profile reset. You may now re-apply."));

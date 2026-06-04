@@ -1,20 +1,32 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import http from "http";
+import { Server } from "socket.io";
 import { connectDB } from "./config/db";
 import app from "./app";
 import { logger } from "./utils/logger";
-
+import { setupChatSocket } from "./socket/chat.socket";
 
 connectDB();
 
 const PORT = Number(process.env.PORT) || 5000;
 
+const server = http.createServer(app);
 
-app.listen(PORT, () => {
-  logger.info(`✅ Server is running on http://localhost:${PORT}`);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
+    credentials: true
+  }
 });
 
+setupChatSocket(io);
+
+server.listen(PORT, () => {
+  logger.info(`✅ Server is running on http://localhost:${PORT}`);
+});
 
 process.on("unhandledRejection", (err: unknown) => {
   logger.error("UNHANDLED REJECTION!  Shutting down...", err instanceof Error ? err : new Error(String(err)));
