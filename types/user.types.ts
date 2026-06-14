@@ -6,6 +6,7 @@ export interface IUser extends Document {
   phone?: string;
   password?: string;
   role: "user" | "provider" | "admin";
+  profilePhoto?: string;
   is_verified: boolean;
   status: "active" | "suspended" | "pending";
   id: string;

@@ -3,9 +3,13 @@ import ProviderAvailability from "../models/providerAvailability.model";
 import ProviderProfile from "../models/providerProfile.model";
 import Conversation from "../models/conversation.model";
 import Message from "../models/message.model";
+import Notification from "../models/notification.model";
+import { Mailer } from "../utils/mailer";
 import { IBooking } from "../types/booking.types";
 import { NotFoundError, BadRequestError } from "../utils/error";
 import mongoose from "mongoose";
+
+const mailer = new Mailer();
 
 export class BookingService {
   
@@ -134,9 +138,17 @@ export class BookingService {
           senderId: userObjId,
           senderRole: "user",
           messageType: "booking_card",
-          content: "I have requested a new booking.",
-          read: false,
-          delivered: false
+          content: "Booking created",
+          readBy: [userObjId]
+        });
+
+        // Trigger notification to provider
+        await Notification.create({
+          userId: provProfile.userId,
+          title: "New Booking Request",
+          message: `You have received a new booking request for ${date} at ${slot.start}.`,
+          type: "info",
+          relatedId: savedBooking._id
         });
       }
     } catch (e) {
@@ -198,6 +210,35 @@ export class BookingService {
     return booking;
   }
 
+  async acceptBooking(bookingId: string, userId: string): Promise<IBooking> {
+    const profile = await ProviderProfile.findOne({ userId });
+    if (!profile) {
+      throw new NotFoundError("Provider profile not found");
+    }
+
+    const booking = await Booking.findOne({ _id: bookingId, providerId: profile._id });
+    if (!booking) {
+      throw new NotFoundError("Booking not found");
+    }
+
+    if (booking.status !== "pending") {
+      throw new BadRequestError("Only pending bookings can be accepted");
+    }
+
+    booking.status = "awaiting_payment";
+    await booking.save();
+
+    await Notification.create({
+      userId: booking.userId,
+      title: "Booking Accepted! 🎉",
+      message: `Provider accepted! Pay the ₹100 booking fee to confirm your slot.`,
+      type: "success",
+      relatedId: booking._id
+    });
+
+    return booking;
+  }
+
   async updateBookingStatus(bookingId: string, userId: string, status: "confirmed" | "completed" | "cancelled"): Promise<IBooking> {
     const profile = await ProviderProfile.findOne({ userId });
     if (!profile) {
@@ -215,7 +256,28 @@ export class BookingService {
     }
 
     booking.status = status;
-    return await booking.save();
+    await booking.save();
+
+    // Notify customer of status change
+    if (status === "confirmed") {
+      await Notification.create({
+        userId: booking.userId,
+        title: "Booking Confirmed! 🎉",
+        message: `Your booking for ${booking.date} at ${booking.slot.start} has been confirmed.`,
+        type: "success",
+        relatedId: booking._id
+      });
+    } else if (status === "cancelled") {
+      await Notification.create({
+        userId: booking.userId,
+        title: "Booking Cancelled",
+        message: `Your booking for ${booking.date} has been cancelled by the provider.`,
+        type: "warning",
+        relatedId: booking._id
+      });
+    }
+
+    return booking;
   }
 
   async cancelBooking(bookingId: string, userId: string, role: string, reason: string): Promise<IBooking> {
@@ -250,8 +312,33 @@ export class BookingService {
     booking.status = "cancelled";
     booking.cancelledBy = role === "user" ? "user" : "provider";
     booking.cancellationReason = reason || "No reason provided";
+    await booking.save();
 
-    return await booking.save();
+    // Notify the OTHER party of the cancellation
+    if (role === "user") {
+      // Notify provider
+      const provProfile = await ProviderProfile.findById(booking.providerId);
+      if (provProfile) {
+        await Notification.create({
+          userId: provProfile.userId,
+          title: "Booking Cancelled by Customer",
+          message: `A customer cancelled their booking for ${booking.date} at ${booking.slot.start}.`,
+          type: "warning",
+          relatedId: booking._id
+        });
+      }
+    } else {
+      // Notify customer
+      await Notification.create({
+        userId: booking.userId,
+        title: "Booking Cancelled by Provider",
+        message: `Your provider cancelled the booking for ${booking.date}. Reason: ${reason || "No reason provided"}.`,
+        type: "warning",
+        relatedId: booking._id
+      });
+    }
+
+    return booking;
   }
 
   async rescheduleBooking(bookingId: string, userId: string, data: any): Promise<IBooking> {
@@ -291,5 +378,143 @@ export class BookingService {
     };
 
     return await this.createBooking(userId, newBookingData);
+  }
+
+  // --- OTP VERIFICATION SYSTEM ---
+
+  private generateOtp(): string {
+    return Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
+  }
+
+  async generateArrivalOtp(bookingId: string, providerUserId: string): Promise<IBooking> {
+    const booking = await Booking.findById(bookingId).populate("providerId").populate("userId");
+    if (!booking) throw new NotFoundError("Booking not found");
+    
+    // Verify provider owns this booking
+    if ((booking as any).providerId.userId.toString() !== providerUserId) {
+      throw new BadRequestError("Unauthorized: You are not the provider for this booking");
+    }
+
+    if (booking.status !== "confirmed") {
+      throw new BadRequestError("Booking must be confirmed to mark arrival");
+    }
+
+    booking.arrivalOtp = this.generateOtp();
+    await booking.save();
+
+    const customer = booking.userId as any;
+    const provider = booking.providerId as any;
+
+    // Send Notification
+    await Notification.create({
+      userId: customer._id,
+      title: "Provider Arrived",
+      message: `Your provider has arrived! Your Arrival OTP is ${booking.arrivalOtp}.`,
+      type: "otp",
+      relatedId: booking._id
+    });
+
+    // Send Email
+    if (customer.email) {
+      await mailer.sendBookingOTP(
+        customer.email,
+        "Provider Arrived - Verification Code",
+        `Your service provider has arrived at the location.`,
+        booking.arrivalOtp
+      );
+    }
+
+    return booking;
+  }
+
+  async verifyArrivalOtp(bookingId: string, providerUserId: string, otp: string): Promise<IBooking> {
+    const booking = await Booking.findById(bookingId).populate("providerId");
+    if (!booking) throw new NotFoundError("Booking not found");
+    
+    if ((booking as any).providerId.userId.toString() !== providerUserId) {
+      throw new BadRequestError("Unauthorized");
+    }
+
+    if (booking.status !== "confirmed") {
+      throw new BadRequestError("Booking is not in confirmed state");
+    }
+
+    if (!booking.arrivalOtp || booking.arrivalOtp !== otp) {
+      throw new BadRequestError("Invalid Arrival OTP");
+    }
+
+    booking.status = "in_progress";
+    booking.arrivalOtp = undefined; // Clear OTP after use
+    return await booking.save();
+  }
+
+  async generateCompletionOtp(bookingId: string, providerUserId: string, invoiceData: { baseCharge: number, extraCharges: any[] }): Promise<IBooking> {
+    const booking = await Booking.findById(bookingId).populate("providerId").populate("userId");
+    if (!booking) throw new NotFoundError("Booking not found");
+    
+    if ((booking as any).providerId.userId.toString() !== providerUserId) {
+      throw new BadRequestError("Unauthorized");
+    }
+
+    if (booking.status !== "in_progress") {
+      throw new BadRequestError("Booking must be in progress to complete");
+    }
+
+    if (!invoiceData.baseCharge || invoiceData.baseCharge <= 0) {
+      throw new BadRequestError("Base charge is required");
+    }
+
+    const totalExtra = invoiceData.extraCharges?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) || 0;
+    const finalTotal = Number(invoiceData.baseCharge) + totalExtra;
+
+    booking.finalInvoice = invoiceData;
+    booking.totalAmount = finalTotal;
+    booking.completionOtp = this.generateOtp();
+
+    await booking.save();
+
+    const customer = booking.userId as any;
+
+    // Send Notification
+    await Notification.create({
+      userId: customer._id,
+      title: "Job Completed - Final Invoice",
+      message: `The provider has marked the job as complete. Total: ₹${finalTotal}. Your Completion OTP is ${booking.completionOtp}.`,
+      type: "otp",
+      relatedId: booking._id
+    });
+
+    // Send Email
+    if (customer.email) {
+      await mailer.sendBookingOTP(
+        customer.email,
+        "Job Completed - Verification Code",
+        `Your service provider has completed the job. The final invoice amount is ₹${finalTotal}.`,
+        booking.completionOtp
+      );
+    }
+
+    return booking;
+  }
+
+  async verifyCompletionOtp(bookingId: string, providerUserId: string, otp: string): Promise<IBooking> {
+    const booking = await Booking.findById(bookingId).populate("providerId");
+    if (!booking) throw new NotFoundError("Booking not found");
+    
+    if ((booking as any).providerId.userId.toString() !== providerUserId) {
+      throw new BadRequestError("Unauthorized");
+    }
+
+    if (booking.status !== "in_progress") {
+      throw new BadRequestError("Booking is not in progress");
+    }
+
+    if (!booking.completionOtp || booking.completionOtp !== otp) {
+      throw new BadRequestError("Invalid Completion OTP");
+    }
+
+    booking.status = "completed_pending_payment";
+    booking.completionOtp = undefined; // Clear OTP
+    return await booking.save();
   }
 }

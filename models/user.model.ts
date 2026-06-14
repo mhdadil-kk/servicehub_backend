@@ -12,6 +12,7 @@ const UserSchema: Schema = new Schema(
       enum: ["user", "provider", "admin"], 
       default: "user" 
     },
+    profilePhoto: { type: String },
     is_verified: { type: Boolean, default: false },
     status: { 
       type: String, 

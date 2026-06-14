@@ -9,7 +9,7 @@ router.use(authMiddleware);
 
 router.get("/", addressController.getAddresses);
 router.post("/", addressController.createAddress);
-router.patch("/:id", addressController.updateAddress);
+router.patch("/:id", addressController.updateAddress);  //should put
 router.delete("/:id", addressController.deleteAddress);
 router.patch("/:id/default", addressController.setDefaultAddress);
 

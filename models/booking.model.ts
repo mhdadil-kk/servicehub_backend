@@ -13,13 +13,25 @@ const BookingSchema: Schema = new Schema({
   },
   status: { 
     type: String, 
-    enum: ["pending", "confirmed", "completed", "cancelled", "rescheduled"], 
+    enum: ["pending", "awaiting_payment", "confirmed", "in_progress", "completed_pending_payment", "completed", "cancelled", "rescheduled"], 
     default: "pending" 
   },
   notes: { type: String },
   cancelledBy: { type: String, enum: ["user", "provider"] },
   cancellationReason: { type: String },
-  rescheduledFrom: { type: Schema.Types.ObjectId, ref: "Booking" }
+  rescheduledFrom: { type: Schema.Types.ObjectId, ref: "Booking" },
+  totalAmount: { type: Number, required: true, default: 0 },
+  paymentStatus: { type: String, enum: ["pending", "paid", "failed", "fully_paid"], default: "pending" },
+  stripeSessionId: { type: String },
+  arrivalOtp: { type: String },
+  completionOtp: { type: String },
+  finalInvoice: {
+    baseCharge: { type: Number },
+    extraCharges: [{
+      description: { type: String },
+      amount: { type: Number }
+    }]
+  }
 }, { timestamps: true });
 
 // Create indexes for fast lookup

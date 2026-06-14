@@ -8,6 +8,7 @@ import providersRoutes from "./routes/providers.routes";
 import addressRoutes from "./routes/address.routes";
 import bookingRoutes from "./routes/booking.routes";
 import chatRoutes from "./routes/chat.routes";
+import paymentRoutes from "./routes/payment.routes";
 import { globalErrorHandler } from "./middlewares/error.middleware";
 import { logger } from "./utils/logger";
 
@@ -33,6 +34,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 
+import notificationRoutes from "./routes/notification.routes";
+
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/services", serviceRoutes);
@@ -41,7 +44,8 @@ app.use("/api/providers", providersRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/chat", chatRoutes);
-
+app.use("/api/payments", paymentRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use(globalErrorHandler);
 

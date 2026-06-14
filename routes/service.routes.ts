@@ -5,7 +5,7 @@ import { authMiddleware } from "../middlewares/auth.middleware";
 const router = express.Router();
 const serviceController = new ServiceController();
 
-router.get("/", authMiddleware, serviceController.getActiveServices);
-router.get("/providers", authMiddleware, serviceController.getApprovedProviders);
+router.get("/", serviceController.getActiveServices);
+router.get("/providers", serviceController.getApprovedProviders);
 
 export default router;

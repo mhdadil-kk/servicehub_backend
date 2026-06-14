@@ -4,6 +4,7 @@ import { logger } from "./logger";
 export interface IMailer {
   sendOTP(email: string, otp: string): Promise<void>;
   sendResetLink(email: string, token: string): Promise<void>;
+  sendBookingOTP(email: string, title: string, message: string, otp: string): Promise<void>;
 }
 
 export class Mailer implements IMailer {
@@ -64,6 +65,31 @@ export class Mailer implements IMailer {
       throw error;
     }
   }
+
+  async sendBookingOTP(email: string, title: string, message: string, otp: string): Promise<void> {
+    const transporter = this.getTransporter();
+    try {
+      await transporter.sendMail({
+        from: `"ServiceHub" <${process.env.SMTP_USER?.replace(/["']/g, "")}>`,
+        to: email,
+        subject: title,
+        text: `${message} Your OTP is ${otp}.`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 40px; border: 1px solid #eee; border-radius: 8px;">
+            <h2 style="color: #1a1a1a; margin-bottom: 24px;">${title}</h2>
+            <p style="color: #666; font-size: 16px;">${message}</p>
+            <div style="background: #f4f4f4; padding: 24px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #000; border-radius: 8px; margin: 24px 0;">
+              ${otp}
+            </div>
+          </div>
+        `,
+      });
+      logger.info(`Booking OTP sent to ${email}`);
+    } catch (error: unknown) {
+      logger.error(`Failed to send Booking OTP to ${email}`, error);
+    }
+  }
+
 
   async sendResetLink(email: string, token: string): Promise<void> {
     const transporter = this.getTransporter();

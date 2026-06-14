@@ -99,6 +99,18 @@ export class BookingController {
     }
   };
 
+  acceptBooking = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+
+      const booking = await this._bookingService.acceptBooking(id, userId);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Booking accepted successfully. Customer has been notified to pay."));
+    } catch (error) {
+      next(error);
+    }
+  };
+
   cancelBooking = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = req.user.id;
@@ -121,6 +133,55 @@ export class BookingController {
 
       const booking = await this._bookingService.rescheduleBooking(id, userId, data);
       res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Booking rescheduled successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // --- OTP ENDPOINTS ---
+
+  generateArrivalOtp = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const providerUserId = req.user.id;
+      const { id } = req.params;
+      const booking = await this._bookingService.generateArrivalOtp(id, providerUserId);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Arrival OTP generated successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  verifyArrivalOtp = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const providerUserId = req.user.id;
+      const { id } = req.params;
+      const { otp } = req.body;
+      const booking = await this._bookingService.verifyArrivalOtp(id, providerUserId, otp);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Arrival OTP verified successfully. Job in progress."));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  generateCompletionOtp = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const providerUserId = req.user.id;
+      const { id } = req.params;
+      const { invoiceData } = req.body; // { baseCharge, extraCharges }
+      const booking = await this._bookingService.generateCompletionOtp(id, providerUserId, invoiceData);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Completion OTP generated successfully. Final Invoice saved."));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  verifyCompletionOtp = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const providerUserId = req.user.id;
+      const { id } = req.params;
+      const { otp } = req.body;
+      const booking = await this._bookingService.verifyCompletionOtp(id, providerUserId, otp);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Completion OTP verified successfully. Job completed."));
     } catch (error) {
       next(error);
     }

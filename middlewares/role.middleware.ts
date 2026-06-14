@@ -9,7 +9,7 @@ export class ForbiddenError extends Error {
 }
 
 export const roleMiddleware = (allowedRoles: ("user" | "provider" | "admin")[]) => {
-  return (
+  return (    
     req: any,
     res: Response,
     next: NextFunction

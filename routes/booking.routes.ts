@@ -24,7 +24,14 @@ router.patch("/:id/cancel", bookingController.cancelBooking);
 router.patch("/:id/reschedule", roleMiddleware(["user"]), bookingController.rescheduleBooking);
 
 // Provider only confirmations
+router.patch("/:id/accept", roleMiddleware(["provider"]), bookingController.acceptBooking);
 router.patch("/:id/confirm", roleMiddleware(["provider"]), bookingController.confirmBooking);
 router.patch("/:id/complete", roleMiddleware(["provider"]), bookingController.completeBooking);
+
+// OTP Verification (Provider Only)
+router.post("/:id/otp/arrival/generate", roleMiddleware(["provider"]), bookingController.generateArrivalOtp);
+router.post("/:id/otp/arrival/verify", roleMiddleware(["provider"]), bookingController.verifyArrivalOtp);
+router.post("/:id/otp/completion/generate", roleMiddleware(["provider"]), bookingController.generateCompletionOtp);
+router.post("/:id/otp/completion/verify", roleMiddleware(["provider"]), bookingController.verifyCompletionOtp);
 
 export default router;

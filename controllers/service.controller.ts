@@ -77,7 +77,7 @@ export class ServiceController {
     } else {
       sortParams[sortBy] = sortOrder;
     }
-
+ 
     const [providers, total] = await Promise.all([
       ProviderProfile.find(query)
         .populate("userId", "name email phone role status")

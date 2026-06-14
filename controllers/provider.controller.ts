@@ -29,10 +29,11 @@ export class ProviderController {
       
       await profile.save();
 
-      if (name || phone) {
+      if (name || phone || profilePhoto) {
         const userUpdate: any = {};
         if (name) userUpdate.name = name;
         if (phone) userUpdate.phone = phone;
+        if (profilePhoto) userUpdate.profilePhoto = profilePhoto;
         await User.findByIdAndUpdate(userId, userUpdate);
       }
 
