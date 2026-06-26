@@ -1,10 +1,10 @@
-import { Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken } from "../utils/jwt";
 import { UnauthorizedError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
 
 export const authMiddleware = (
-  req: any,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {

@@ -17,7 +17,7 @@ export interface IProviderProfile extends Document {
     type: "Point";
     coordinates: [number, number]; 
   };
-  documents: any[];
+  documents: IProviderDocument[];
   onboardingStep: number;
   onboardingStatus: "pending" | "in_review" | "approved" | "rejected";
   rejectionReason?: string;
@@ -27,6 +27,8 @@ export interface IProviderProfile extends Document {
     accountNumber: string;
     routingNumber: string;
   };
+  averageRating?: number;
+  totalReviews?: number;
   createdAt: Date;
   updatedAt: Date;
 }

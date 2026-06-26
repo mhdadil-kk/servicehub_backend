@@ -7,3 +7,5 @@ export interface IOTP extends Document {
   type: "verification" | "reset_password";
   id: string;
 }
+
+export type UserRole = "user" | "provider" | "admin";

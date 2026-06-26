@@ -7,6 +7,7 @@ import { roleMiddleware } from "../middlewares/role.middleware";
 
 import { validate } from "../middlewares/validate.middleware";
 import { IdParamSchema, UpdateStatusSchema, UserQuerySchema } from "../dtos/admin.dto";
+import { ROUTES } from "../constants/routes";
 
 const router = express.Router();
 
@@ -14,69 +15,66 @@ const userRepository = new AuthRepository();
 const adminService = new AdminService(userRepository);
 const adminController = new AdminController(adminService);
 
-// User Management
-router.get("/users",
+router.get(ROUTES.ADMIN.USERS,
     authMiddleware,
     roleMiddleware(["admin"]),
     validate(UserQuerySchema),
     adminController.getAllUsers
 );
 
-router.delete("/users/:id",
+router.delete(ROUTES.ADMIN.USER_BY_ID,
     authMiddleware,
     roleMiddleware(["admin"]),
     validate(IdParamSchema),
     adminController.deleteUser
 );
 
-router.patch("/users/:id/unblock",
+router.patch(ROUTES.ADMIN.UNBLOCK_USER,
     authMiddleware,
     roleMiddleware(["admin"]),
     validate(IdParamSchema),
     adminController.unblockUser
 );
 
-// Provider Management
-router.get("/providers",
+router.get(ROUTES.ADMIN.PROVIDERS,
     authMiddleware,
     roleMiddleware(["admin"]),
     validate(UserQuerySchema),
     adminController.getProviders
 );
 
-router.get("/providers/:id",
+router.get(ROUTES.ADMIN.PROVIDER_BY_ID,
     authMiddleware,
     roleMiddleware(["admin"]),
     adminController.getProviderDetail
 );
 
-router.post("/providers/:id/verify",
+router.post(ROUTES.ADMIN.VERIFY_PROVIDER,
     authMiddleware,
     roleMiddleware(["admin"]),
     adminController.verifyProvider
 );
 
-router.patch("/providers/:id/status",
+router.patch(ROUTES.ADMIN.PROVIDER_STATUS,
     authMiddleware,
     roleMiddleware(["admin"]),
     validate(UpdateStatusSchema),
     adminController.updateUserStatus
 );
 
-// Service Category Management
-router.get("/services",
+router.get(ROUTES.ADMIN.SERVICES,
     authMiddleware,
     roleMiddleware(["admin"]),
     adminController.getAllServices
 );
 
-router.post("/services",
+router.post(ROUTES.ADMIN.SERVICES,
     authMiddleware,
     roleMiddleware(["admin"]),
     adminController.addService
 );
 
-router.delete("/services/:id",
+router.delete(ROUTES.ADMIN.SERVICE_BY_ID,
     authMiddleware,
     roleMiddleware(["admin"]),
     validate(IdParamSchema),

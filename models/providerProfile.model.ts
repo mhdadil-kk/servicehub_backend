@@ -20,9 +20,17 @@ const ProviderProfileSchema: Schema = new Schema({
       required: false
     }
   },
-  documents: { type: Array, default: [] },
+  documents: {
+    type: [{
+      docType: { type: String, required: true },
+      url: { type: String, required: true }
+    }],
+    default: []
+  },
   onboardingStep: { type: Number, default: 1 },
   onboardingStatus: { type: String, enum: ["pending", "in_review", "approved", "rejected"], default: "pending" },
+  averageRating: { type: Number, default: 0 },
+  totalReviews: { type: Number, default: 0 },
   rejectionReason: { type: String },
   bankDetails: {
     accountHolderName: { type: String },

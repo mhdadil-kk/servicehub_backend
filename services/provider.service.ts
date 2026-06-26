@@ -1,101 +1,146 @@
-import { IProviderService } from "../interfaces/services/IProviderService";
-import { IProviderRepository } from "../interfaces/repositories/IProviderRepository";
-import { IProviderProfile } from "../interfaces/models/IProviderProfile";
-import { NotFoundError } from "../utils/error";
-import { ProviderRepository } from "../repositories/provider.repository";
-import User from "../models/user.model";
-import ProviderProfile from "../models/providerProfile.model";
-import ProviderAvailability from "../models/providerAvailability.model";
+import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
+import { IProviderAvailabilityRepository } from "../interfaces/repositories/IProviderAvailabilityRepository";
+import { IUserRepository } from "../repositories/auth.repository";
+import { IProviderProfile } from "../types/providerProfile.types";
 import { IProviderAvailability } from "../types/providerProfile.types";
+import { BadRequestError, NotFoundError } from "../utils/error";
+import { ERROR_MESSAGES } from "../constants/messages";
+import { IProviderService } from "../interfaces/services/IProviderService";
 
 export class ProviderService implements IProviderService {
-  private _providerRepository: IProviderRepository;
+    private _providerProfileRepository: IProviderProfileRepository;
+  private _providerAvailabilityRepository: IProviderAvailabilityRepository;
+  private _userRepository: IUserRepository;
+  constructor(
+    providerProfileRepository: IProviderProfileRepository,
+    providerAvailabilityRepository: IProviderAvailabilityRepository,
+    userRepository: IUserRepository
+  ) {
+    this._providerProfileRepository = providerProfileRepository;
+    this._providerAvailabilityRepository = providerAvailabilityRepository;
+    this._userRepository = userRepository;
+}
 
-  constructor() {
-    this._providerRepository = new ProviderRepository();
+  async getProfile(userId: string) {
+    return this._providerProfileRepository.findByUserIdWithDetails(userId);
   }
 
-  async updateProfile(userId: string, data: { bio?: string; serviceRadius?: number; profilePhoto?: string }): Promise<IProviderProfile> {
-    let profile = await this._providerRepository.findOne({ userId });
+  async updateProfile(userId, data) {
+    const profile = await this._providerProfileRepository.findOrCreateByUserId(userId);
 
-    if (!profile) {
-      profile = await this._providerRepository.create({ userId } as any);
+    const profileUpdate: Partial<IProviderProfile> = {
+      onboardingStep: Math.max(profile.onboardingStep, 2),
+    };
+    if (data.bio) profileUpdate.bio = data.bio;
+    if (data.profilePhoto) profileUpdate.profilePhoto = data.profilePhoto;
+
+    const updated = await this._providerProfileRepository.updateById(
+      profile._id.toString(),
+      profileUpdate
+    );
+
+    if (data.name || data.phone || data.profilePhoto) {
+      await this._userRepository.updateById(userId, {
+        ...(data.name && { name: data.name }),
+        ...(data.phone && { phone: data.phone }),
+        ...(data.profilePhoto && { profilePhoto: data.profilePhoto }),
+      });
     }
 
-    const updateData: any = {};
-    if (data.bio) updateData.bio = data.bio;
-    if (data.serviceRadius) updateData.serviceRadius = data.serviceRadius;
-    if (data.profilePhoto) updateData.profilePhoto = data.profilePhoto;
-    updateData.onboardingStep = Math.max(profile!.onboardingStep, 2);
-
-    return (await this._providerRepository.update(profile!._id as string, updateData)) as IProviderProfile;
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
+    return updated;
   }
 
-  async updateServiceDetails(userId: string, data: { serviceId: string; hourlyRate: number }): Promise<IProviderProfile> {
-    const profile = await this._providerRepository.findOne({ userId });
-    if (!profile) throw new NotFoundError("Profile not found");
+  async updateLocation(userId, data) {
+    const profile = await this._providerProfileRepository.findByUserId(userId);
+    if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
 
-    return (await this._providerRepository.update(profile._id as string, {
-      serviceId: data.serviceId,
-      hourlyRate: data.hourlyRate,
-      onboardingStep: Math.max(profile.onboardingStep, 3)
-    })) as IProviderProfile;
+    const update: Partial<IProviderProfile> = {
+      onboardingStep: Math.max(profile.onboardingStep, 3),
+    };
+    if (data.address) update.address = data.address;
+    if (data.serviceRadius) update.serviceRadius = data.serviceRadius;
+    if (data.latitude != null && data.longitude != null) {
+      update.location = {
+        type: "Point",
+        coordinates: [data.longitude, data.latitude],
+      };
+    }
+
+    const updated = await this._providerProfileRepository.updateById(profile._id.toString(), update);
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
+    return updated;
   }
 
-  async uploadDocuments(userId: string, documents: { docType: "identity" | "license"; url: string }[]): Promise<IProviderProfile> {
-    const profile = await this._providerRepository.findOne({ userId });
-    if (!profile) throw new NotFoundError("Profile not found");
+  async updateServiceDetails(userId, { serviceId, hourlyRate }) {
+    const profile = await this._providerProfileRepository.findByUserId(userId);
+    if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
 
-    return (await this._providerRepository.update(profile._id as string, {
-      documents,
+    return (await this._providerProfileRepository.updateById(profile._id.toString(), {
+      serviceId,
+      hourlyRate,
       onboardingStep: Math.max(profile.onboardingStep, 4),
-      onboardingStatus: "in_review"
-    })) as IProviderProfile;
+    }))!;
   }
 
-  async updateBankDetails(userId: string, data: { accountHolderName: string; bankName: string; accountNumber: string; routingNumber: string }): Promise<IProviderProfile> {
-    const profile = await this._providerRepository.findOne({ userId });
-    if (!profile) throw new NotFoundError("Profile not found");
+  async uploadVerificationDocs(userId, documents) {
+    if (!documents.length) throw new BadRequestError(ERROR_MESSAGES.NO_DOCUMENTS_UPLOADED);
 
-    const updatedProfile = await this._providerRepository.update(profile._id as string, {
-      bankDetails: data,
-      onboardingStep: 4,
-      onboardingStatus: "in_review"
+    const profile = await this._providerProfileRepository.findByUserId(userId);
+    if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
+
+    return (await this._providerProfileRepository.updateById(profile._id.toString(), {
+      documents,
+      onboardingStep: Math.max(profile.onboardingStep, 5),
+      onboardingStatus: "in_review",
+    }))!;
+  }
+
+  async updateBankDetails(userId, bankDetails) {
+    const profile = await this._providerProfileRepository.findByUserId(userId);
+    if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
+
+    const updated = await this._providerProfileRepository.updateById(profile._id.toString(), {
+      bankDetails,
+      onboardingStep: 5,
+      onboardingStatus: "in_review",
     });
 
-    await User.findByIdAndUpdate(userId, { status: "in_review" });
-
-    return updatedProfile as IProviderProfile;
+    await this._userRepository.updateById(userId, { status: "in_review" });
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
+    return updated;
   }
 
-  async getProfile(userId: string): Promise<IProviderProfile | null> {
-    return await ProviderProfile.findOne({ userId })
-      .populate("userId", "name email phone role status")
-      .populate("serviceId", "name description");
-  }
+  async resetForReapply(userId) {
+    const profile = await this._providerProfileRepository.findByUserId(userId);
+    if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
 
-  async getAvailability(userId: string): Promise<IProviderAvailability | null> {
-    const profile = await this._providerRepository.findOne({ userId });
-    if (!profile) throw new NotFoundError("Profile not found");
-
-    let availability = await ProviderAvailability.findOne({ providerId: profile._id });
-    if (!availability) {
-      // Create default if missing
-      availability = await ProviderAvailability.create({ providerId: profile._id });
+    if (profile.onboardingStatus !== "rejected") {
+      throw new BadRequestError(ERROR_MESSAGES.ONLY_REJECTED_CAN_REAPPLY);
     }
-    return availability;
+
+    const updated = await this._providerProfileRepository.updateById(profile._id.toString(), {
+      onboardingStatus: "pending",
+      onboardingStep: 1,
+      rejectionReason: "",
+    });
+
+    await this._userRepository.updateById(userId, { status: "pending" });
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
+    return updated;
   }
 
-  async updateAvailability(userId: string, data: any): Promise<IProviderAvailability> {
-    const profile = await this._providerRepository.findOne({ userId });
-    if (!profile) throw new NotFoundError("Profile not found");
+  async getAvailability(userId) {
+    const profile = await this._providerProfileRepository.findByUserId(userId);
+    if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROVIDER_PROFILE_NOT_FOUND);
 
-    const availability = await ProviderAvailability.findOneAndUpdate(
-      { providerId: profile._id },
-      { $set: data },
-      { new: true, upsert: true }
-    );
-    
-    return availability;
+    return this._providerAvailabilityRepository.findOrCreateByProviderId(profile._id.toString());
+  }
+
+  async updateAvailability(userId, data) {
+    const profile = await this._providerProfileRepository.findByUserId(userId);
+    if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROVIDER_PROFILE_NOT_FOUND);
+
+    return this._providerAvailabilityRepository.upsertByProviderId(profile._id.toString(), data);
   }
 }

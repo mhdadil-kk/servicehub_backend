@@ -1,15 +1,16 @@
-import multer from "multer";
+import multer, { FileFilterCallback } from "multer";
+import { Request } from "express";
 import { profileStorage, documentStorage } from "../config/cloudinary.config";
 
-const profileFilter = (req: any, file: Express.Multer.File, cb: any) => {
+const profileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
   if (["image/jpeg", "image/jpg", "image/png"].includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Only JPG, JPEG, and PNG images are allowed for profile photos."), false);
+    cb(new Error("Only JPG, JPEG, and PNG images are allowed for profile photos.") as unknown as null, false);
   }
 };
 
-const docFilter = (req: any, file: Express.Multer.File, cb: any) => {
+const docFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
   if (["image/jpeg", "image/jpg", "image/png", "application/pdf"].includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -19,13 +20,13 @@ const docFilter = (req: any, file: Express.Multer.File, cb: any) => {
 
 export const uploadProfile = multer({
   storage: profileStorage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  limits: { fileSize: 2 * 1024 * 1024 }, 
   fileFilter: profileFilter
 });
 
 export const uploadDocuments = multer({
   storage: documentStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 }, 
   fileFilter: docFilter
 });
 

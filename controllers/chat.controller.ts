@@ -1,21 +1,21 @@
 import { Request, Response, NextFunction } from "express";
-import { ChatService } from "../services/chat.service";
+import { IChatService } from "../interfaces/services/IChatService";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
+import { SUCCESS_MESSAGES } from "../constants/messages";
 
 export class ChatController {
-  private _chatService: ChatService;
-
-  constructor() {
-    this._chatService = new ChatService();
+  private readonly _chatService: IChatService;
+  constructor(chatService: IChatService) {
+    this._chatService = chatService;
   }
 
   getConversations = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user.id;
-      const role = (req as any).user.role;
-      const conversations = await this._chatService.getConversations(userId, role);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(conversations));
+      const conversations = await this._chatService.getConversations(req.user!.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(conversations, SUCCESS_MESSAGES.CONVERSATIONS_FETCHED)
+      );
     } catch (error) {
       next(error);
     }
@@ -23,9 +23,10 @@ export class ChatController {
 
   getOrCreateDirectConversation = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user.id;
-      const { targetUserId } = (req as any).body;
-      const conversation = await this._chatService.getOrCreateDirectConversation(userId, targetUserId);
+      const conversation = await this._chatService.getOrCreateDirectConversation(
+        req.user!.id,
+        req.body.targetUserId
+      );
       res.status(HttpStatusCode.OK).json(createSuccessResponse(conversation));
     } catch (error) {
       next(error);
@@ -34,11 +35,10 @@ export class ChatController {
 
   getChatHistory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user.id;
-      const { bookingId } = req.params as { bookingId: string }; // Can be conversationId or bookingId
-
-      const history = await this._chatService.getChatHistory(bookingId, userId);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(history));
+      const history = await this._chatService.getChatHistory(req.params.bookingId, req.user!.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(history, SUCCESS_MESSAGES.CHAT_HISTORY_FETCHED)
+      );
     } catch (error) {
       next(error);
     }
@@ -46,11 +46,10 @@ export class ChatController {
 
   markAsRead = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user.id;
-      const { bookingId } = req.params as { bookingId: string }; // Can be conversationId or bookingId
-
-      await this._chatService.markAsRead(bookingId, userId);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Messages marked as read"));
+      await this._chatService.markAsRead(req.params.bookingId, req.user!.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(null, SUCCESS_MESSAGES.MESSAGES_MARKED_READ)
+      );
     } catch (error) {
       next(error);
     }
@@ -58,11 +57,10 @@ export class ChatController {
 
   deleteConversation = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user.id;
-      const { conversationId } = req.params;
-
-      await this._chatService.deleteConversation(conversationId, userId);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Conversation deleted successfully"));
+      await this._chatService.deleteConversation(req.params.conversationId, req.user!.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(null, SUCCESS_MESSAGES.CONVERSATION_DELETED)
+      );
     } catch (error) {
       next(error);
     }

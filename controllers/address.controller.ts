@@ -1,21 +1,21 @@
 import { Request, Response, NextFunction } from "express";
-import { AddressService } from "../services/address.service";
+import { IAddressService } from "../interfaces/services/IAddressService";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
-import { BadRequestError } from "../utils/error";
+import { SUCCESS_MESSAGES } from "../constants/messages";
 
 export class AddressController {
-  private _addressService: AddressService;
-
-  constructor() {
-    this._addressService = new AddressService();
+  private readonly _addressService: IAddressService;
+  constructor(addressService: IAddressService) {
+    this._addressService = addressService;
   }
 
   getAddresses = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const addresses = await this._addressService.getAddresses(userId);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(addresses));
+      const addresses = await this._addressService.getAddresses(req.user!.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(addresses, SUCCESS_MESSAGES.ADDRESSES_FETCHED)
+      );
     } catch (error) {
       next(error);
     }
@@ -23,22 +23,10 @@ export class AddressController {
 
   createAddress = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const { label, fullAddress, latitude, longitude, isDefault } = req.body;
-
-      if (!label || !fullAddress) {
-        throw new BadRequestError("Label and Full Address are required");
-      }
-
-      const address = await this._addressService.createAddress(userId, {
-        label,
-        fullAddress,
-        latitude,
-        longitude,
-        isDefault
-      });
-
-      res.status(HttpStatusCode.CREATED).json(createSuccessResponse(address, "Address added successfully"));
+      const address = await this._addressService.createAddress(req.user!.id, req.body);
+      res.status(HttpStatusCode.CREATED).json(
+        createSuccessResponse(address, SUCCESS_MESSAGES.ADDRESS_CREATED)
+      );
     } catch (error) {
       next(error);
     }
@@ -46,19 +34,10 @@ export class AddressController {
 
   updateAddress = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
-      const { label, fullAddress, latitude, longitude, isDefault } = req.body;
-
-      const address = await this._addressService.updateAddress(userId, id, {
-        label,
-        fullAddress,
-        latitude,
-        longitude,
-        isDefault
-      });
-
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(address, "Address updated successfully"));
+      const address = await this._addressService.updateAddress(req.user!.id, req.params.id, req.body);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(address, SUCCESS_MESSAGES.ADDRESS_UPDATED)
+      );
     } catch (error) {
       next(error);
     }
@@ -66,11 +45,10 @@ export class AddressController {
 
   deleteAddress = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
-
-      await this._addressService.deleteAddress(userId, id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Address deleted successfully"));
+      await this._addressService.deleteAddress(req.user!.id, req.params.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(null, SUCCESS_MESSAGES.ADDRESS_DELETED)
+      );
     } catch (error) {
       next(error);
     }
@@ -78,11 +56,10 @@ export class AddressController {
 
   setDefaultAddress = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
-
-      const address = await this._addressService.setDefaultAddress(userId, id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(address, "Default address updated"));
+      const address = await this._addressService.setDefaultAddress(req.user!.id, req.params.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(address, SUCCESS_MESSAGES.ADDRESS_DEFAULT_SET)
+      );
     } catch (error) {
       next(error);
     }

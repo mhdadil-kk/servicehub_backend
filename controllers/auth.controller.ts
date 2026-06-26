@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { IAuthService } from "../services/auth.service";
+import { IAuthService } from "../interfaces/services/IAuthService";
 import { UserMapper } from "../mappers/user.mapper";
 import { HttpStatusCode } from "../types/http";
 import { createSuccessResponse } from "../types/response";
@@ -100,6 +100,28 @@ export class AuthController {
       const { accessToken } = await this._authService.refreshToken(refreshToken);
       res.status(HttpStatusCode.OK).json(
         createSuccessResponse({ accessToken }, "Token refreshed successfully")
+      );
+    } catch (error) { next(error); }
+  };
+
+  changePassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user.id;
+      const { oldPassword, newPassword } = req.body;
+      await this._authService.changePassword(userId, oldPassword, newPassword);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(null, "Password changed successfully")
+      );
+    } catch (error) { next(error); }
+  };
+
+  updateProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user.id;
+      const { name, phone } = req.body;
+      const { user } = await this._authService.updateProfile(userId, { name, phone });
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse({ user: UserMapper.toResponse(user) }, "Profile updated successfully")
       );
     } catch (error) { next(error); }
   };

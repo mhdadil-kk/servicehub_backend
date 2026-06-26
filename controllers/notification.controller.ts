@@ -1,56 +1,51 @@
-import { Request, Response, NextFunction } from "express";
-import Notification from "../models/notification.model";
+import { Request,Response,NextFunction } from "express";
+import { INotificationService } from "../interfaces/services/INotificationService";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
+import { SUCCESS_MESSAGES } from "../constants/messages";
 
 export class NotificationController {
-  
-  getNotifications = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user.id;
-      const notifications = await Notification.find({ userId })
-        .sort({ createdAt: -1 })
-        .limit(50);
-      
-      const unreadCount = await Notification.countDocuments({ userId, isRead: false });
+  private readonly _notificationService: INotificationService;
 
-      res.status(HttpStatusCode.OK).json(createSuccessResponse({
-        notifications,
-        unreadCount
-      }));
-    } catch (error) {
+  constructor(notificationService: INotificationService){
+    this._notificationService = notificationService;
+  }
+
+  getNotifications = async (req: Request, res: Response, next: NextFunction) =>{
+    try{
+      const userId = req.user!.id;
+      const result = await this._notificationService.getByUserId(userId);
+
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(result));
+    }catch(error) {
       next(error);
     }
   };
 
-  markAsRead = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user.id;
+  markAsRead = async (req: Request, res: Response, next: NextFunction)=>{
+    try{
+      const userId = req.user!.id;
       const { id } = req.params;
 
-      const notification = await Notification.findOneAndUpdate(
-        { _id: id, userId },
-        { isRead: true },
-        { new: true }
-      );
+      const notification = await this._notificationService.markAsRead(id,userId);
 
       res.status(HttpStatusCode.OK).json(createSuccessResponse(notification));
-    } catch (error) {
-      next(error);
+    }catch(error){
+      next(error)
     }
   };
 
-  markAllAsRead = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user.id;
-      await Notification.updateMany(
-        { userId, isRead: false },
-        { isRead: true }
-      );
-
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "All notifications marked as read"));
-    } catch (error) {
-      next(error);
+  markAllAsRead = async (req: Request, res: Response, next: NextFunction)=>{
+    try{
+      const userId = req.user!.id;
+      await this._notificationService.markAllAsRead(userId);
+      
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(null,SUCCESS_MESSAGES.OPERATION_SUCCESS)
+      )
+    }catch(error){
+      next(error)
     }
-  };
+    
+  }
 }

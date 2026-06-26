@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { IAdminService } from "../services/admin.service";
+import { IAdminService } from "../interfaces/services/IAdminService";
 import { createSuccessResponse } from "../types/response";
 import { UserMapper } from "../mappers/user.mapper";
 import { HttpStatusCode } from "../types/http";
@@ -72,7 +72,7 @@ export class AdminController {
     try {
       const id = req.params.id;
       const user = await this._adminService.unblockUser(id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse({ user: UserMapper.toResponse(user) }, "User unblocked successfully"));
+      res.status(HttpStatusCode.OK).json(createSuccessResponse({ user: UserMapper.toResponse(user) }, SUCCESS_MESSAGES.USER_UNBLOCKED));
     } catch (error: unknown) {
       next(error);
     }
@@ -92,7 +92,7 @@ export class AdminController {
   addService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const service = await this._adminService.addService(req.body);
-      res.status(HttpStatusCode.CREATED).json(createSuccessResponse(service, "Service category created successfully"));
+      res.status(HttpStatusCode.CREATED).json(createSuccessResponse(service, SUCCESS_MESSAGES.SERVICE_CATEGORY_CREATED));
     } catch (error: unknown) {
       next(error);
     }
@@ -111,7 +111,7 @@ export class AdminController {
     try {
       const id = req.params.id;
       await this._adminService.deleteService(id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Service category deleted successfully"));
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, SUCCESS_MESSAGES.SERVICE_CATEGORY_DELETED));
     } catch (error: unknown) {
       next(error);
     }

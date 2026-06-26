@@ -7,6 +7,7 @@ import { connectDB } from "./config/db";
 import app from "./app";
 import { logger } from "./utils/logger";
 import { setupChatSocket } from "./socket/chat.socket";
+import { chatService } from "./routes/chat.routes";
 
 connectDB();
 
@@ -22,7 +23,7 @@ const io = new Server(server, {
   }
 });
 
-setupChatSocket(io);
+setupChatSocket(io, chatService);
 
 server.listen(PORT, () => {
   logger.info(`✅ Server is running on http://localhost:${PORT}`);

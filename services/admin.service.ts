@@ -1,4 +1,4 @@
-import { IUserRepository } from "../repositories/auth.repository";
+import { IUserRepository } from "../interfaces/repositories/IUserRepository";
 import { IUser } from "../types/user.types";
 import { FilterQuery } from "mongoose";
 import { NotFoundError, BadRequestError } from "../utils/error";
@@ -6,20 +6,7 @@ import { ERROR_MESSAGES } from "../constants/messages";
 import { ServiceRepository } from "../repositories/service.repository";
 import { IService } from "../models/service.model";
 import ProviderProfile from "../models/providerProfile.model";
-
-export interface IAdminService {
-  getAllUsers(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ users: IUser[], total: number }>;
-  getProviders(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ providers: IUser[], total: number }>;
-  updateUserStatus(id: string, status: string): Promise<IUser>;
-  unblockUser(id: string): Promise<IUser>;
-  deleteUser(id: string): Promise<void>;
-  addService(data: Partial<IService>): Promise<IService>;
-  getAllServices(): Promise<IService[]>;
-  deleteService(id: string): Promise<void>;
-  getPendingProviders(): Promise<any[]>;
-  getProviderDetail(userId: string): Promise<any>;
-  verifyProvider(userId: string, status: "approved" | "rejected", remarks?: string): Promise<void>;
-}
+import { IAdminService } from "../interfaces/services/IAdminService";
 
 export class AdminService implements IAdminService {
   private _userRepository: IUserRepository;
@@ -180,11 +167,9 @@ export class AdminService implements IAdminService {
     
     await profile.save();
 
-    // Also update the User status
     if (status === "approved") {
       await this._userRepository.update(userId, { is_verified: true, status: "active" });
     } else {
-      // If rejected, set status to rejected so they see the rejection reason and can click re-apply
       await this._userRepository.update(userId, { status: "rejected" });
     }
   }

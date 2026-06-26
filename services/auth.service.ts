@@ -1,5 +1,5 @@
-import { IUserRepository } from "../repositories/auth.repository";
-import { IOTPRepository } from "../repositories/otp.repository";
+import { IUserRepository } from "../interfaces/repositories/IUserRepository";
+import { IOTPRepository } from "../interfaces/repositories/IOTPRepository";
 import { IUser } from "../types/user.types";
 import { IMailer } from "../utils/mailer";
 import { generateTokens, verifyRefreshToken } from "../utils/jwt";
@@ -8,19 +8,7 @@ import { ERROR_MESSAGES } from "../constants/messages";
 import bcrypt from "bcrypt";
 import { OTPGenerator } from "../utils/otp";
 import { logger } from "../utils/logger";
-
-
-
-
-export interface IAuthService {
-  signup(data: Partial<IUser>): Promise<IUser>;
-  login(email: string, password: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
-  requestOTP(email: string, type: "verification" | "reset_password"): Promise<void>;
-  verifyEmail(email: string, otp: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
-  resetPassword(email: string, otp: string, newPassword: string): Promise<void>;
-  googleLogin(token: string, role?: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
-  refreshToken(token: string): Promise<{ accessToken: string }>;
-}
+import { IAuthService } from "../interfaces/services/IAuthService";
 
 export class AuthService implements IAuthService {
 
@@ -79,7 +67,7 @@ export class AuthService implements IAuthService {
     
     const isReset = type === "reset_password";
     const code = isReset ? OTPGenerator.generateToken() : OTPGenerator.generate(6);
-    const expiresAt = new Date(Date.now() + (isReset ? 60 : 5) * 60 * 1000); // 1 hour for reset, 5 mins for verify
+    const expiresAt = new Date(Date.now() + (isReset ? 60 : 5) * 60 * 1000); 
     
     await this._otpRepository.deleteByUserId(user.id);
     await this._otpRepository.create({ user_id: user.id as string, code, expires_at: expiresAt, type });
@@ -162,6 +150,27 @@ export class AuthService implements IAuthService {
     
     const { accessToken } = generateTokens(user.id, user.role);
     return { accessToken };
+  }
+
+  async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
+    const user = await this._userRepository.findById(userId);
+    if (!user || user.isDeleted) throw new UnauthorizedError("User not found or blocked");
+    if (!user.password) throw new BadRequestError("User does not have a password set (e.g., registered via Google)");
+
+    const isValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isValid) throw new BadRequestError(ERROR_MESSAGES.INCORRECT_PASSWORD);
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this._userRepository.update(userId, { password: hashedPassword });
+  }
+
+  async updateProfile(userId: string, data: { name?: string; phone?: string }): Promise<{ user: IUser }> {
+    const user = await this._userRepository.findById(userId);
+    if (!user || user.isDeleted) throw new UnauthorizedError("User not found or blocked");
+    
+    await this._userRepository.update(userId, data);
+    const updatedUser = await this._userRepository.findById(userId);
+    return { user: updatedUser! };
   }
 }
 

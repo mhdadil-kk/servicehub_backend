@@ -14,3 +14,5 @@ export interface IUser extends Document {
   created_at: Date;
   updated_at: Date;
 }
+
+export type UserResponseDTO = Omit<IUser, "password" | "isDeleted">;

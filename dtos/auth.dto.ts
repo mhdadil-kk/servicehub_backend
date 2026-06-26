@@ -40,6 +40,20 @@ export const ResetPasswordSchema = z.object({
   })
 });
 
+export const ChangePasswordSchema = z.object({
+  body: z.object({
+    oldPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(6, "New password must be at least 6 characters")
+  })
+});
+
+export const UpdateProfileSchema = z.object({
+  body: z.object({
+    name: z.string().min(2, "Name must be at least 2 characters").optional(),
+    phone: z.string().optional()
+  })
+});
+
 export const GoogleLoginSchema = z.object({
   body: z.object({
     token: z.string().min(1, "Google token is required"),

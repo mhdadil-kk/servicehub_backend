@@ -1,98 +1,93 @@
-import Address from "../models/address.model";
+import { IAddressRepository } from "../interfaces/repositories/IAddressRepository";
 import { IAddress } from "../types/address.types";
 import { NotFoundError } from "../utils/error";
+import { ERROR_MESSAGES } from "../constants/messages";
+import { IAddressService, CreateAddressInput, UpdateAddressInput } from "../interfaces/services/IAddressService";
 
-export class AddressService {
+export class AddressService implements IAddressService {
+    private _addressRepository: IAddressRepository;
+  constructor(
+    addressRepository: IAddressRepository
+  ) {
+    this._addressRepository = addressRepository;
+}
+
   async getAddresses(userId: string): Promise<IAddress[]> {
-    return await Address.find({ userId }).sort({ isDefault: -1, createdAt: -1 });
+    return this._addressRepository.findByUserId(userId);
   }
 
-  async createAddress(userId: string, data: any): Promise<IAddress> {
-    const addressCount = await Address.countDocuments({ userId });
-    
-    // If it's the first address, it should default to true
-    let isDefault = data.isDefault || false;
-    if (addressCount === 0) {
-      isDefault = true;
-    }
+  async createAddress(userId: string, data: CreateAddressInput): Promise<IAddress> {
+    const addressCount = await this._addressRepository.countByUserId(userId);
+    let isDefault = data.isDefault ?? false;
+    if (addressCount === 0) isDefault = true;
 
     if (isDefault) {
-      // Set all other addresses for this user to isDefault = false
-      await Address.updateMany({ userId }, { $set: { isDefault: false } });
+      await this._addressRepository.clearDefaultForUser(userId);
     }
 
-    const address = new Address({
+    return this._addressRepository.create({
       userId,
       label: data.label,
       fullAddress: data.fullAddress,
       latitude: data.latitude,
       longitude: data.longitude,
-      isDefault
-    });
-
-    return await address.save();
+      isDefault,
+    } as unknown as Partial<IAddress>);
   }
 
-  async updateAddress(userId: string, addressId: string, data: any): Promise<IAddress> {
-    const address = await Address.findOne({ _id: addressId, userId });
-    if (!address) {
-      throw new NotFoundError("Address not found");
-    }
+  async updateAddress(userId: string, addressId: string, data: UpdateAddressInput): Promise<IAddress> {
+    const address = await this._addressRepository.findByIdForUser(addressId, userId);
+    if (!address) throw new NotFoundError(ERROR_MESSAGES.ADDRESS_NOT_FOUND);
 
-    if (data.label) address.label = data.label;
-    if (data.fullAddress) address.fullAddress = data.fullAddress;
-    if (data.latitude !== undefined) address.latitude = data.latitude;
-    if (data.longitude !== undefined) address.longitude = data.longitude;
+    const updates: Partial<IAddress> = {};
+    if (data.label !== undefined) updates.label = data.label;
+    if (data.fullAddress !== undefined) updates.fullAddress = data.fullAddress;
+    if (data.latitude !== undefined) updates.latitude = data.latitude;
+    if (data.longitude !== undefined) updates.longitude = data.longitude;
 
     if (data.isDefault !== undefined && data.isDefault !== address.isDefault) {
       if (data.isDefault) {
-        await Address.updateMany({ userId }, { $set: { isDefault: false } });
-        address.isDefault = true;
+        await this._addressRepository.clearDefaultForUser(userId);
+        updates.isDefault = true;
       } else {
-        // If they are trying to unset the default, check if they have other addresses
-        const otherAddresses = await Address.findOne({ userId, _id: { $ne: addressId } });
-        if (otherAddresses) {
-          address.isDefault = false;
-          // Set another address as default
-          otherAddresses.isDefault = true;
-          await otherAddresses.save();
+        const other = await this._addressRepository.findOtherByUserId(userId, addressId);
+        if (other) {
+          updates.isDefault = false;
+          await this._addressRepository.updateById(other._id.toString(), { isDefault: true });
         } else {
-          // If it's the only address, it must remain default
-          address.isDefault = true;
+          updates.isDefault = true; 
         }
       }
     }
 
-    return await address.save();
+    const updated = await this._addressRepository.updateById(addressId, updates);
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.ADDRESS_NOT_FOUND);
+    return updated;
   }
 
   async deleteAddress(userId: string, addressId: string): Promise<void> {
-    const address = await Address.findOne({ _id: addressId, userId });
-    if (!address) {
-      throw new NotFoundError("Address not found");
-    }
+    const address = await this._addressRepository.findByIdForUser(addressId, userId);
+    if (!address) throw new NotFoundError(ERROR_MESSAGES.ADDRESS_NOT_FOUND);
 
     const wasDefault = address.isDefault;
-    await Address.deleteOne({ _id: addressId, userId });
+    const deleted = await this._addressRepository.deleteByIdForUser(addressId, userId);
+    if (!deleted) throw new NotFoundError(ERROR_MESSAGES.ADDRESS_NOT_FOUND);
 
     if (wasDefault) {
-      // Find another address to set as default
-      const remainingAddress = await Address.findOne({ userId });
-      if (remainingAddress) {
-        remainingAddress.isDefault = true;
-        await remainingAddress.save();
+      const remaining = await this._addressRepository.findFirstByUserId(userId);
+      if (remaining) {
+        await this._addressRepository.updateById(remaining._id.toString(), { isDefault: true });
       }
     }
   }
 
   async setDefaultAddress(userId: string, addressId: string): Promise<IAddress> {
-    const address = await Address.findOne({ _id: addressId, userId });
-    if (!address) {
-      throw new NotFoundError("Address not found");
-    }
+    const address = await this._addressRepository.findByIdForUser(addressId, userId);
+    if (!address) throw new NotFoundError(ERROR_MESSAGES.ADDRESS_NOT_FOUND);
 
-    await Address.updateMany({ userId }, { $set: { isDefault: false } });
-    address.isDefault = true;
-    return await address.save();
+    await this._addressRepository.clearDefaultForUser(userId);
+    const updated = await this._addressRepository.updateById(addressId, { isDefault: true });
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.ADDRESS_NOT_FOUND);
+    return updated;
   }
 }

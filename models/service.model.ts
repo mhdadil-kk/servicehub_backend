@@ -18,7 +18,6 @@ const ServiceSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Auto-generate slug from name before saving
 ServiceSchema.pre("validate", async function() {
   if (this.name && !this.slug) {
     this.slug = this.name.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");

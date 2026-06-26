@@ -1,54 +1,67 @@
 import express from "express";
 import { ProviderController } from "../controllers/provider.controller";
+import { ProviderService } from "../services/provider.service";
+import { ProviderProfileRepository } from "../repositories/providerProfile.repository";
+import { ProviderAvailabilityRepository } from "../repositories/providerAvailability.repository";
+import { AuthRepository } from "../repositories/auth.repository";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { roleMiddleware } from "../middlewares/role.middleware";
 import { uploadProfile, uploadDocuments } from "../middlewares/upload.middleware";
 import { validate } from "../middlewares/validate.middleware";
-import { ProfileUpdateSchema, ServiceDetailsSchema } from "../dtos/provider.dto";
+import {
+  ProfileUpdateSchema,
+  ServiceDetailsSchema,
+  LocationUpdateSchema,
+  BankDetailsSchema,
+} from "../dtos/provider.dto";
+import { ROUTES } from "../constants/routes";
 
 const router = express.Router();
-const providerController = new ProviderController();
 
-// All routes require provider role
+const providerProfileRepository = new ProviderProfileRepository();
+const providerAvailabilityRepository = new ProviderAvailabilityRepository();
+const userRepository = new AuthRepository();
+const providerService = new ProviderService(
+  providerProfileRepository,
+  providerAvailabilityRepository,
+  userRepository
+);
+const providerController = new ProviderController(providerService);
+
 router.use(authMiddleware, roleMiddleware(["provider"]));
 
-router.get("/profile", providerController.getProfile);
+router.get(ROUTES.PROVIDER.PROFILE, providerController.getProfile);
+router.get(ROUTES.PROVIDER.AVAILABILITY, providerController.getAvailability);
+router.put(ROUTES.PROVIDER.AVAILABILITY, providerController.updateAvailability);
 
-// Availability
-router.get("/availability", providerController.getAvailability);
-router.put("/availability", providerController.updateAvailability);
-
-// Step 1: Profile Info + Photo
-router.patch("/onboarding/profile", 
-  uploadProfile.single("profilePhoto"), 
+router.patch(
+  ROUTES.PROVIDER.ONBOARDING_PROFILE,
+  uploadProfile.single("profilePhoto"),
   validate(ProfileUpdateSchema),
   providerController.updateProfile
 );
-
-// Step 2: Location Info
-router.patch("/onboarding/location", 
+router.patch(
+  ROUTES.PROVIDER.ONBOARDING_LOCATION,
+  validate(LocationUpdateSchema),
   providerController.updateLocation
 );
-
-// Step 2: Service Info
-router.patch("/onboarding/service", 
+router.patch(
+  ROUTES.PROVIDER.ONBOARDING_SERVICE,
   validate(ServiceDetailsSchema),
   providerController.updateServiceDetails
 );
-
-// Step 3: Documents
-router.post("/onboarding/documents", 
+router.post(
+  ROUTES.PROVIDER.ONBOARDING_DOCUMENTS,
   uploadDocuments.fields([
     { name: "identity", maxCount: 5 },
-    { name: "license", maxCount: 5 }
-  ]), 
+    { name: "license", maxCount: 5 },
+  ]),
   providerController.uploadVerificationDocs
 );
-
-// Reset profile for re-applying
-router.post("/onboarding/reset", providerController.resetForReapply);
-
-router.patch("/onboarding/bank", 
+router.post(ROUTES.PROVIDER.ONBOARDING_RESET, providerController.resetForReapply);
+router.patch(
+  ROUTES.PROVIDER.ONBOARDING_BANK,
+  validate(BankDetailsSchema),
   providerController.updateBankDetails
 );
 

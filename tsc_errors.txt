@@ -1,0 +1,171 @@
+﻿controllers/address.controller.ts(37,78): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/address.controller.ts(48,62): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/address.controller.ts(59,82): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/admin.controller.ts(63,62): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/admin.controller.ts(74,57): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/admin.controller.ts(85,43): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/admin.controller.ts(113,46): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/admin.controller.ts(123,67): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/admin.controller.ts(134,47): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/auth.controller.ts(109,22): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/auth.controller.ts(120,22): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/booking.controller.ts(65,9): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/booking.controller.ts(79,64): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/booking.controller.ts(91,9): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/booking.controller.ts(106,9): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/booking.controller.ts(121,9): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/booking.controller.ts(137,9): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/booking.controller.ts(151,69): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/booking.controller.ts(163,9): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/booking.controller.ts(178,9): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/booking.controller.ts(193,9): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/chat.controller.ts(38,62): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/chat.controller.ts(49,42): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/chat.controller.ts(60,50): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/notification.controller.ts(30,71): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/review.controller.ts(43,67): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/review.controller.ts(63,59): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+controllers/service.controller.ts(9,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+dtos/admin.dto.ts(16,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: readonly ["approved", "rejected", "pending"], params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Object literal may only specify known properties, and 'errorMap' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; }'.
+  Overload 2 of 2, '(entries: Readonly<Record<string, EnumValue>>, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Argument of type 'string[]' is not assignable to parameter of type 'Readonly<Record<string, EnumValue>>'.
+      Index signature for type 'string' is missing in type 'string[]'.
+gateways/stripe.gateway.ts(6,28): error TS2709: Cannot use namespace 'Stripe' as a type.
+gateways/stripe.gateway.ts(12,43): error TS2322: Type '"2024-04-10"' is not assignable to type '"2026-05-27.dahlia"'.
+interfaces/repositories/IOTPRepository.ts(1,10): error TS2614: Module '"../../models/otp.model"' has no exported member 'IOTP'. Did you mean to use 'import IOTP from "../../models/otp.model"' instead?
+interfaces/repositories/IRepository.ts(1,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+interfaces/repositories/IUserRepository.ts(1,10): error TS2614: Module '"../../models/user.model"' has no exported member 'IUser'. Did you mean to use 'import IUser from "../../models/user.model"' instead?
+middlewares/auth.middleware.ts(18,5): error TS2322: Type '{ id: string; role: string; }' is not assignable to type '{ id: string; role: UserRole; }'.
+  Types of property 'role' are incompatible.
+    Type 'string' is not assignable to type 'UserRole'.
+middlewares/error.middleware.ts(17,34): error TS18046: 'err' is of type 'unknown'.
+middlewares/error.middleware.ts(18,18): error TS18046: 'err' is of type 'unknown'.
+middlewares/error.middleware.ts(19,15): error TS18046: 'err' is of type 'unknown'.
+middlewares/error.middleware.ts(24,51): error TS18046: 'err' is of type 'unknown'.
+middlewares/error.middleware.ts(28,7): error TS18046: 'err' is of type 'unknown'.
+middlewares/error.middleware.ts(33,7): error TS18046: 'err' is of type 'unknown'.
+middlewares/error.middleware.ts(38,7): error TS18046: 'err' is of type 'unknown'.
+middlewares/error.middleware.ts(46,23): error TS18046: 'err' is of type 'unknown'.
+middlewares/upload.middleware.ts(9,8): error TS2345: Argument of type 'Error' is not assignable to parameter of type 'null'.
+middlewares/upload.middleware.ts(17,8): error TS2345: Argument of type 'Error' is not assignable to parameter of type 'null'.
+middlewares/validate.middleware.ts(2,10): error TS2724: '"zod"' has no exported member named 'AnyZodObject'. Did you mean 'ZodObject'?
+models/service.model.ts(24,27): error TS2339: Property 'toLowerCase' does not exist on type '{}'.
+repositories/address.repository.ts(4,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+repositories/auth.repository.ts(1,21): error TS2614: Module '"../models/user.model"' has no exported member 'IUser'. Did you mean to use 'import IUser from "../models/user.model"' instead?
+repositories/base.repository.ts(1,27): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+repositories/base.repository.ts(56,36): error TS2345: Argument of type 'Record<string, number>' is not assignable to parameter of type 'string | Record<string, SortOrder | { $meta: any; }> | [string, SortOrder][] | null | undefined'.
+  Type 'Record<string, number>' is missing the following properties from type '[string, SortOrder][]': length, pop, push, concat, and 28 more.
+repositories/booking.repository.ts(4,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+repositories/conversation.repository.ts(4,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+repositories/conversation.repository.ts(32,24): error TS2352: Conversion of type '{ participants: mongoose.Types.ObjectId[]; bookingId: string; }' to type 'Partial<IConversation>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'bookingId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+repositories/message.repository.ts(4,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+repositories/message.repository.ts(21,24): error TS2352: Conversion of type '{ conversationId: string; bookingId: string; senderId: string; senderRole: "user" | "provider"; messageType: "booking_card"; content: string; read: false; }' to type 'Partial<IMessage>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'conversationId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+repositories/message.repository.ts(61,24): error TS2352: Conversion of type '{ conversationId: string; bookingId: string | undefined; senderId: string; senderRole: "user" | "provider"; content: string; read: false; delivered: false; }' to type 'Partial<IMessage>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'conversationId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+repositories/message.repository.ts(108,9): error TS2416: Property 'softDelete' in type 'MessageRepository' is not assignable to the same property in base type 'BaseRepository<IMessage>'.
+  Type '(messageId: string, userId: string) => Promise<IMessage | null>' is not assignable to type '(id: string) => Promise<boolean>'.
+    Target signature provides too few arguments. Expected 2 or more, but got 1.
+repositories/notification.repository.ts(4,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+repositories/notification.repository.ts(43,9): error TS2416: Property 'create' in type 'NotificationRepository' is not assignable to the same property in base type 'BaseRepository<INotification>'.
+  Type '(data: { userId: string; title: string; message: string; type?: "otp" | "message" | "info" | "success" | "warning" | undefined; relatedId?: string | undefined; }) => Promise<INotification>' is not assignable to type '(data: Partial<INotification>) => Promise<INotification>'.
+    Types of parameters 'data' and 'data' are incompatible.
+      Type 'Partial<INotification>' is not assignable to type '{ userId: string; title: string; message: string; type?: "otp" | "message" | "info" | "success" | "warning" | undefined; relatedId?: string | undefined; }'.
+        Types of property 'userId' are incompatible.
+          Type 'ObjectId | undefined' is not assignable to type 'string'.
+            Type 'undefined' is not assignable to type 'string'.
+repositories/notification.repository.ts(50,25): error TS2352: Conversion of type '{ userId: string; title: string; message: string; type?: "otp" | "message" | "info" | "success" | "warning" | undefined; relatedId?: string | undefined; }' to type 'Partial<INotification>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'userId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+repositories/otp.repository.ts(1,20): error TS2614: Module '"../models/otp.model"' has no exported member 'IOTP'. Did you mean to use 'import IOTP from "../models/otp.model"' instead?
+repositories/providerAvailability.repository.ts(4,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+repositories/providerAvailability.repository.ts(22,40): error TS2352: Conversion of type '{ providerId: string; }' to type 'Partial<IProviderAvailability>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'providerId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+repositories/providerProfile.repository.ts(4,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+repositories/providerProfile.repository.ts(74,35): error TS2352: Conversion of type '{ userId: string; }' to type 'Partial<IProviderProfile>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'userId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+repositories/review.repository.ts(3,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+repositories/review.repository.ts(44,9): error TS2416: Property 'create' in type 'ReviewRepository' is not assignable to the same property in base type 'BaseRepository<IReview>'.
+  Type '(data: { bookingId: string; providerId: string; userId: string; rating: number; reviewText: string; }) => Promise<IReview>' is not assignable to type '(data: Partial<IReview>) => Promise<IReview>'.
+    Types of parameters 'data' and 'data' are incompatible.
+      Type 'Partial<IReview>' is not assignable to type '{ bookingId: string; providerId: string; userId: string; rating: number; reviewText: string; }'.
+        Types of property 'bookingId' are incompatible.
+          Type 'ObjectId | undefined' is not assignable to type 'string'.
+            Type 'undefined' is not assignable to type 'string'.
+repositories/review.repository.ts(51,25): error TS2352: Conversion of type '{ bookingId: string; providerId: string; userId: string; rating: number; reviewText: string; }' to type 'Partial<IReview>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'bookingId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+repositories/transaction.repository.ts(46,28): error TS2352: Conversion of type '{ walletId: string; userId: string; type: "credit" | "debit"; amount: number; description: string; referenceId: string | undefined; status: "pending" | "failed" | "success"; }' to type 'Partial<ITransaction>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'walletId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+repositories/wallet.repository.ts(3,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+repositories/wallet.repository.ts(18,40): error TS2352: Conversion of type '{ userId: string; balance: number; currency: string; }' to type 'Partial<IWallet>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'userId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+services/address.service.ts(23,42): error TS2352: Conversion of type '{ userId: string; label: string; fullAddress: string; latitude: number | undefined; longitude: number | undefined; isDefault: boolean; }' to type 'Partial<IAddress>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'userId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+services/admin.service.ts(3,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+services/admin.service.ts(113,53): error TS2345: Argument of type 'ObjectId' is not assignable to parameter of type 'string'.
+services/booking.service.ts(7,10): error TS2724: '"../services/notification.service"' has no exported member named 'INotificationService'. Did you mean 'NotificationService'?
+services/booking.service.ts(84,62): error TS2352: Conversion of type '{ userId: string; providerId: string; serviceId: string; addressId: string; date: string; slot: { start: string; end: string; }; notes: string | undefined; rescheduledFrom: string | undefined; status: "pending"; }' to type 'Partial<IBooking>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'userId' are incompatible.
+    Type 'string' is not comparable to type 'ObjectId'.
+services/booking.service.ts(391,7): error TS2322: Type '{ baseCharge: number; extraCharges?: { description: string; amount: number; }[] | undefined; }' is not assignable to type '{ baseCharge: number; extraCharges: { description: string; amount: number; }[]; }'.
+  Types of property 'extraCharges' are incompatible.
+    Type '{ description: string; amount: number; }[] | undefined' is not assignable to type '{ description: string; amount: number; }[]'.
+      Type 'undefined' is not assignable to type '{ description: string; amount: number; }[]'.
+services/chat.service.ts(4,10): error TS2724: '"../repositories/booking.repository"' has no exported member named 'IBookingRepository'. Did you mean 'BookingRepository'?
+services/payment.service.ts(3,10): error TS2724: '"../services/wallet.service"' has no exported member named 'IWalletService'. Did you mean 'WalletService'?
+services/payment.service.ts(4,10): error TS2724: '"../services/notification.service"' has no exported member named 'INotificationService'. Did you mean 'NotificationService'?
+services/provider.service.ts(3,10): error TS2459: Module '"../repositories/auth.repository"' declares 'IUserRepository' locally, but it is not exported.
+services/provider.service.ts(21,23): error TS7006: Parameter 'userId' implicitly has an 'any' type.
+services/provider.service.ts(21,31): error TS7006: Parameter 'data' implicitly has an 'any' type.
+services/provider.service.ts(47,24): error TS7006: Parameter 'userId' implicitly has an 'any' type.
+services/provider.service.ts(47,32): error TS7006: Parameter 'data' implicitly has an 'any' type.
+services/provider.service.ts(68,30): error TS7006: Parameter 'userId' implicitly has an 'any' type.
+services/provider.service.ts(68,40): error TS7031: Binding element 'serviceId' implicitly has an 'any' type.
+services/provider.service.ts(68,51): error TS7031: Binding element 'hourlyRate' implicitly has an 'any' type.
+services/provider.service.ts(79,32): error TS7006: Parameter 'userId' implicitly has an 'any' type.
+services/provider.service.ts(79,40): error TS7006: Parameter 'documents' implicitly has an 'any' type.
+services/provider.service.ts(92,27): error TS7006: Parameter 'userId' implicitly has an 'any' type.
+services/provider.service.ts(92,35): error TS7006: Parameter 'bankDetails' implicitly has an 'any' type.
+services/provider.service.ts(107,25): error TS7006: Parameter 'userId' implicitly has an 'any' type.
+services/provider.service.ts(126,25): error TS7006: Parameter 'userId' implicitly has an 'any' type.
+services/provider.service.ts(133,28): error TS7006: Parameter 'userId' implicitly has an 'any' type.
+services/provider.service.ts(133,36): error TS7006: Parameter 'data' implicitly has an 'any' type.
+socket/chat.socket.ts(3,10): error TS2724: '"../services/chat.service"' has no exported member named 'IChatService'. Did you mean 'ChatService'?
+socket/chat.socket.ts(36,33): error TS7006: Parameter 'convId' implicitly has an 'any' type.

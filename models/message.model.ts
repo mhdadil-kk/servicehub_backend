@@ -13,7 +13,7 @@ const MessageSchema: Schema = new Schema({
   isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
-// Create indexes for fast lookup
+
 MessageSchema.index({ conversationId: 1, createdAt: 1 });
 MessageSchema.index({ bookingId: 1, createdAt: 1 });
 

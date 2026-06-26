@@ -1,6 +1,5 @@
 
 export const ERROR_MESSAGES = {
-  // Auth Errors
   USER_NOT_FOUND: "User not found with the provided identifier.",
   EMAIL_ALREADY_EXISTS: "Email address is already registered.",
   INVALID_CREDENTIALS: "Invalid email or password.",
@@ -8,28 +7,136 @@ export const ERROR_MESSAGES = {
   FORBIDDEN: "Access denied. Insufficient permissions.",
   OTP_EXPIRED: "The verification code has expired.",
   OTP_INVALID: "Invalid verification code.",
-  
-  // Validation & Server Errors
+
   INTERNAL_SERVER_ERROR: "Something went wrong on our end.",
   VALIDATION_ERROR: "The data provided is incorrect.",
   BAD_REQUEST: "The request could not be processed.",
   RESOURCE_NOT_FOUND: "The requested resource was not found.",
-  
-  // Admin & User Errors
+
   USER_ALREADY_DELETED: "This user has already been deleted.",
   PROVIDER_ALREADY_APPROVED: "This service provider has already been approved.",
+  PROVIDER_PROFILE_NOT_FOUND: "Provider profile not found.",
+
+  BOOKING_NOT_FOUND: "Booking not found.",
+  NOT_AUTHORIZED_REVIEW: "Not authorized to review this booking.",
+  BOOKING_NOT_REVIEWABLE: "Booking must be completed to leave a review.",
+  INVALID_BOOKING_ID: "Invalid booking ID format.",
+  INVALID_PROVIDER_ID: "Invalid provider ID format.",
+  INVALID_REVIEW_ID: "Invalid review ID format.",
+  REVIEW_NOT_FOUND: "Review not found.",
+  NOT_AUTHORIZED_LIKE: "Not authorized to like this review.",
+  REVIEW_FIELDS_REQUIRED: "bookingId, rating and reviewText are required.",
+  RATING_OUT_OF_RANGE: "Rating must be between 1 and 5.",
+
+  BOOKING_ID_REQUIRED: "Booking ID is required.",
+  SESSION_AND_BOOKING_REQUIRED: "sessionId and bookingId are required.",
+  UNAUTHORIZED_BOOKING_ACCESS: "Unauthorized access to this booking.",
+  BOOKING_ALREADY_COMPLETED: "Booking is already fully paid and completed.",
+  PAYMENT_NOT_REQUIRED: "Payment not required at this stage.",
+  SESSION_ID_MISMATCH: "Session ID mismatch.",
+  CHECKOUT_URL_MISSING: "Checkout URL was not returned.",
+
+  PROFILE_NOT_FOUND: "Profile not found.",
+  NO_DOCUMENTS_UPLOADED: "No documents uploaded.",
+  ALL_BANK_DETAILS_REQUIRED: "All bank details are required.",
+  ONLY_REJECTED_CAN_REAPPLY: "Only rejected profiles can re-apply.",
+  SERVICE_ID_AND_RATE_REQUIRED: "Service ID and Hourly Rate are required.",
+
+  BOOKING_DETAILS_REQUIRED: "All booking details are required.",
+  SLOT_NOT_AVAILABLE: "The requested time slot is not available.",
+  SLOT_ALREADY_BOOKED: "The requested time slot is already booked.",
+  ONLY_PENDING_CAN_ACCEPT: "Only pending bookings can be accepted.",
+  ONLY_CONFIRMED_CAN_COMPLETE: "Only confirmed bookings can be marked as completed.",
+  CANNOT_CANCEL_BOOKING: "Cannot cancel this booking.",
+  CANCEL_WITHIN_2_HOURS: "Bookings cannot be cancelled within 2 hours of the scheduled time.",
+  CANNOT_RESCHEDULE_BOOKING: "Cannot reschedule this booking.",
+  RESCHEDULE_WITHIN_2_HOURS: "Bookings cannot be rescheduled within 2 hours of the scheduled time.",
+  UNAUTHORIZED_PROVIDER_BOOKING: "Unauthorized: You are not the provider for this booking.",
+  BOOKING_NOT_CONFIRMED: "Booking must be confirmed to mark arrival.",
+  BOOKING_NOT_IN_PROGRESS: "Booking must be in progress.",
+  INVALID_ARRIVAL_OTP: "Invalid Arrival OTP.",
+  INVALID_COMPLETION_OTP: "Invalid Completion OTP.",
+  BASE_CHARGE_REQUIRED: "Base charge is required.",
+  PROVIDER_ID_AND_DATE_REQUIRED: "Provider ID and Date are required query parameters.",
+
+  ADDRESS_NOT_FOUND: "Address not found.",
+  ADDRESS_LABEL_REQUIRED: "Label and full address are required.",
+  
+  CHAT_CONVERSATION_NOT_FOUND: "Conversation not found.",
+  CHAT_ACCESS_DENIED: "Access denied to this conversation.",
+  CHAT_MESSAGE_NOT_FOUND: "Message not found.",
+  CHAT_CANNOT_DELETE_MESSAGE: "You can only delete your own messages.",
+  TARGET_USER_REQUIRED: "Target user ID is required.",
+  INVALID_STATUS: "Invalid status value",
+  USER_UPDATE_FAILED: "User could not be updated",
+  SERVICE_NAME_EXISTS: "A service with this name already exists",
+  INCORRECT_PASSWORD: "Incorrect current password",
 };
 
 export const SUCCESS_MESSAGES = {
-  // Auth Success
   LOGIN_SUCCESS: "Login successful.",
   SIGNUP_SUCCESS: "Account created successfully.",
   OTP_SENT: "Verification code sent to your email.",
   OTP_VERIFIED: "Email verified successfully.",
-  
-  // Admin & User Success
+
   USER_DELETED: "User account deleted successfully.",
   USER_UPDATED: "User account updated successfully.",
   PROVIDER_APPROVED: "Service provider account approved.",
   PROVIDER_REJECTED: "Service provider account rejected.",
+  OPERATION_SUCCESS: "Operation completed successfully.",
+  USER_DASHBOARD_FETCHED: "User dashboard fetched successfully.",
+  PROVIDER_DASHBOARD_FETCHED: "Provider dashboard fetched successfully.",
+
+  REVIEW_SUBMITTED: "Review submitted successfully.",
+  REVIEWS_FETCHED: "Reviews fetched successfully.",
+  REVIEW_ALREADY_SUBMITTED: "Review already submitted.",
+  REVIEW_LIKED: "Review liked successfully.",
+  REVIEW_UNLIKED: "Review unliked successfully.",
+
+  WALLET_FETCHED: "Wallet data fetched successfully.",
+  CHECKOUT_SESSION_CREATED: "Checkout session created successfully.",
+  PAYMENT_VERIFIED: "Payment verified.",
+  PAYMENT_ALREADY_PROCESSED: "Already processed.",
+  WEBHOOK_RECEIVED: "Webhook received.",
+
+  PROFILE_UPDATED: "Profile updated successfully.",
+  LOCATION_UPDATED: "Location updated successfully.",
+  SERVICE_DETAILS_UPDATED: "Service details updated.",
+  DOCUMENTS_UPLOADED: "Documents uploaded and submitted for review.",
+  BANK_DETAILS_UPDATED: "Bank details updated and onboarding completed.",
+  PROFILE_RESET: "Profile reset. You may now re-apply.",
+  AVAILABILITY_UPDATED: "Availability updated successfully.",
+  AVAILABILITY_FETCHED: "Availability fetched successfully.",
+  PROFILE_FETCHED: "Profile fetched successfully.",
+
+  BOOKING_CREATED: "Booking request created successfully.",
+  BOOKING_ACCEPTED: "Booking accepted successfully. Customer has been notified to pay.",
+  BOOKING_CONFIRMED: "Booking confirmed successfully.",
+  BOOKING_COMPLETED: "Booking completed successfully.",
+  BOOKING_CANCELLED: "Booking cancelled successfully.",
+  BOOKING_RESCHEDULED: "Booking rescheduled successfully.",
+  ARRIVAL_OTP_GENERATED: "Arrival OTP generated successfully.",
+  ARRIVAL_OTP_VERIFIED: "Arrival OTP verified successfully. Job in progress.",
+  COMPLETION_OTP_GENERATED: "Completion OTP generated successfully. Final Invoice saved.",
+  COMPLETION_OTP_VERIFIED: "Completion OTP verified successfully. Job completed.",
+  SLOTS_FETCHED: "Available slots fetched successfully.",
+  BOOKINGS_FETCHED: "Bookings fetched successfully.",
+  BOOKING_DETAIL_FETCHED: "Booking detail fetched successfully.",
+
+  ADDRESSES_FETCHED: "Addresses fetched successfully.",
+  ADDRESS_CREATED: "Address added successfully.",
+  ADDRESS_UPDATED: "Address updated successfully.",
+  ADDRESS_DELETED: "Address deleted successfully.",
+  ADDRESS_DEFAULT_SET: "Default address updated.",
+
+  CONVERSATIONS_FETCHED: "Conversations fetched successfully.",
+  CHAT_HISTORY_FETCHED: "Chat history fetched successfully.",
+  MESSAGES_MARKED_READ: "Messages marked as read.",
+  CONVERSATION_DELETED: "Conversation deleted successfully.",
+  USER_UNBLOCKED: "User unblocked successfully",
+  SERVICE_CATEGORY_CREATED: "Service category created successfully",
+  SERVICE_CATEGORY_DELETED: "Service category deleted successfully",
+  PASSWORD_RESET_SUCCESS: "Password reset successfully.",
+  TOKEN_REFRESHED: "Token refreshed successfully",
+  PASSWORD_CHANGED: "Password changed successfully",
 };

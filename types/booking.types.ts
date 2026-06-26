@@ -5,10 +5,10 @@ export interface IBooking extends Document {
   providerId: mongoose.Types.ObjectId;
   serviceId: mongoose.Types.ObjectId;
   addressId: mongoose.Types.ObjectId;
-  date: string; // YYYY-MM-DD
+  date: string; 
   slot: {
-    start: string; // HH:MM
-    end: string; // HH:MM
+    start: string; 
+    end: string; 
   };
   status: "pending" | "awaiting_payment" | "confirmed" | "in_progress" | "completed_pending_payment" | "completed" | "cancelled" | "rescheduled";
   notes?: string;

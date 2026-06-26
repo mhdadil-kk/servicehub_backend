@@ -1,12 +1,6 @@
 import { OTPModel, IOTP } from "../models/otp.model";
 import { BaseRepository } from "../repositories/base.repository";
-import { IRepository } from "./IRepository";
-
-
-export interface IOTPRepository extends IRepository<IOTP> {
-  findLatest(userId: string, type: string): Promise<IOTP | null>;
-  deleteByUserId(userId: string): Promise<void>;
-}
+import { IOTPRepository } from "../interfaces/repositories/IOTPRepository";
 
 
 export class OTPRepository extends BaseRepository<IOTP> implements IOTPRepository {

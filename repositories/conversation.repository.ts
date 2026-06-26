@@ -1,0 +1,88 @@
+import ConversationModel from "../models/conversation.model";
+import { IConversation } from "../models/conversation.model";
+import { BaseRepository } from "./base.repository";
+import { FilterQuery } from "mongoose";
+import mongoose from "mongoose";
+import { IConversationRepository } from "../interfaces/repositories/IConversationRepository";
+
+export class ConversationRepository
+  extends BaseRepository<IConversation>
+  implements IConversationRepository
+{
+  constructor() {
+    super(ConversationModel);
+  }
+
+  isParticipant(conversation: IConversation, userId: string): boolean {
+    return conversation.participants.some((p: any) => {
+      const idStr = p && p._id ? p._id.toString() : p?.toString();
+      return idStr === userId;
+    });
+  }
+
+  async findByParticipants(participantIds: string[]): Promise<IConversation | null> {
+    const objectIds = participantIds.map((id) => new mongoose.Types.ObjectId(id));
+    return this.model
+      .findOne({ participants: { $all: objectIds, $size: 2 } } as FilterQuery<IConversation>)
+      .exec();
+  }
+
+  async createForBooking(participantIds: string[], bookingId: string): Promise<IConversation> {
+    const sorted = participantIds
+      .map((id) => new mongoose.Types.ObjectId(id))
+      .sort((a, b) => a.toString().localeCompare(b.toString()));
+
+    return this.create({ participants: sorted, bookingId } as Partial<IConversation>);
+  }
+
+  async attachBooking(conversationId: string, bookingId: string): Promise<IConversation | null> {
+    return this.update(conversationId, { bookingId });
+  }
+
+  async findByUserIdPopulated(userId: string): Promise<IConversation[]> {
+    return this.model
+      .find({ participants: userId } as FilterQuery<IConversation>)
+      .populate("participants", "name email role")
+      .populate({ path: "bookingId", populate: { path: "serviceId", select: "name" } })
+      .sort({ updatedAt: -1 })
+      .exec();
+  }
+
+  async findDirectBetweenUsers(userId: string, targetUserId: string): Promise<IConversation[]> {
+    const ids = [userId, targetUserId].map((id) => new mongoose.Types.ObjectId(id));
+    return this.model
+      .find({ participants: { $all: ids, $size: 2 } } as FilterQuery<IConversation>)
+      .populate("participants", "name email role")
+      .populate({ path: "bookingId", populate: { path: "serviceId", select: "name" } })
+      .sort({ updatedAt: -1 })
+      .exec();
+  }
+
+  async createDirect(participantIds: string[]): Promise<IConversation> {
+    const sorted = participantIds
+      .map((id) => new mongoose.Types.ObjectId(id))
+      .sort((a, b) => a.toString().localeCompare(b.toString()));
+
+    return this.create({ participants: sorted, bookingId: null } as Partial<IConversation>);
+  }
+
+  async findByIdOrBookingIdPopulated(id: string): Promise<IConversation | null> {
+    return this.model
+      .findOne({ $or: [{ _id: id }, { bookingId: id }] } as FilterQuery<IConversation>)
+      .populate("participants", "name email role")
+      .exec();
+  }
+
+  async findById(id: string): Promise<IConversation | null> {
+    return super.findById(id);
+  }
+
+  async touchUpdatedAt(conversationId: string): Promise<void> {
+    await this.model.findByIdAndUpdate(conversationId, { updatedAt: new Date() }).exec();
+  }
+
+  async deleteById(conversationId: string): Promise<boolean> {
+    const result = await this.model.deleteOne({ _id: conversationId }).exec();
+    return result.deletedCount > 0;
+  }
+}

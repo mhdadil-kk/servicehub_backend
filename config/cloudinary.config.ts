@@ -16,7 +16,7 @@ export const profileStorage = new CloudinaryStorage({
     folder: "servicehub/profiles",
     allowed_formats: ["jpg", "png", "jpeg"],
     transformation: [{ width: 500, height: 500, crop: "limit" }],
-  } as any,
+  } as Record<string, unknown>,
 });
 
 export const documentStorage = new CloudinaryStorage({
@@ -24,7 +24,7 @@ export const documentStorage = new CloudinaryStorage({
   params: {
     folder: "servicehub/documents",
     allowed_formats: ["jpg", "png", "jpeg", "pdf"],
-  } as any,
+  } as Record<string, unknown>,
 });
 
 export default cloudinary;

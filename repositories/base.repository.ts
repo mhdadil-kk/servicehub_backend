@@ -1,6 +1,6 @@
 import { Model, Document, FilterQuery, UpdateQuery } from "mongoose";
 
-import { IRepository } from "./IRepository";
+import { IRepository } from "../interfaces/repositories/IRepository";
 
 
 export abstract class BaseRepository<T extends Document> implements IRepository<T> {

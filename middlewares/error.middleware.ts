@@ -6,36 +6,36 @@ import { HttpStatusCode } from "../types/http";
 import { createErrorResponse } from "../types/response";
 
 export const globalErrorHandler = (
-  err: any,
+  err: unknown,
   _req: Request,
   res: Response,
   _next: NextFunction
 ) => {
-  let statusCode = err.statusCode || HttpStatusCode.INTERNAL_SERVER_ERROR;
+  let statusCode = (err instanceof AppError ? err.statusCode : undefined) || HttpStatusCode.INTERNAL_SERVER_ERROR;
   let message: string;
 
-  if (err instanceof AppError || err.statusCode) {
+  if (err instanceof AppError) {
     statusCode = err.statusCode || statusCode;
     message = err.message;
   } else if (err instanceof Error && err.message.includes("allowed for profile photos")) {
     statusCode = HttpStatusCode.BAD_REQUEST;
     message = err.message;
   } else {
-    logger.error(`Unexpected application error: ${err.message}`, err);
+    logger.error(`Unexpected application error: ${(err as Error).message}`, err);
     message = ERROR_MESSAGES.INTERNAL_SERVER_ERROR;
   }
 
-  if (err.name === "ValidationError") {
+  if (err instanceof Error && err.name === "ValidationError") {
     statusCode = HttpStatusCode.BAD_REQUEST;
     message = ERROR_MESSAGES.VALIDATION_ERROR;
   }
 
-  if (err.name === "JsonWebTokenError") {
+  if (err instanceof Error && err.name === "JsonWebTokenError") {
     statusCode = HttpStatusCode.UNAUTHORIZED;
     message = "Invalid token. Please log in again.";
   }
 
-  if (err.name === "TokenExpiredError") {
+  if (err instanceof Error && err.name === "TokenExpiredError") {
     statusCode = HttpStatusCode.UNAUTHORIZED;
     message = "Your token has expired. Please log in again.";
   }
@@ -43,7 +43,7 @@ export const globalErrorHandler = (
   const response = createErrorResponse(message);
   
   if (process.env.NODE_ENV === "development") {
-    response.errors = err.stack;
+    response.errors = err instanceof Error ? err.stack : String(err);
   }
 
   res.status(statusCode).json(response);

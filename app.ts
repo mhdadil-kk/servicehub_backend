@@ -9,6 +9,7 @@ import addressRoutes from "./routes/address.routes";
 import bookingRoutes from "./routes/booking.routes";
 import chatRoutes from "./routes/chat.routes";
 import paymentRoutes from "./routes/payment.routes";
+import reviewRoutes from "./routes/review.routes";
 import { globalErrorHandler } from "./middlewares/error.middleware";
 import { logger } from "./utils/logger";
 
@@ -35,6 +36,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 
 import notificationRoutes from "./routes/notification.routes";
+import walletRoutes from "./routes/wallet.routes";
+import dashboardRoutes from "./routes/dashboard.routes";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
@@ -46,6 +49,9 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 app.use(globalErrorHandler);
 

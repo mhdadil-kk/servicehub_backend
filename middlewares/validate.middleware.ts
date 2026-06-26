@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { AnyZodObject, ZodError } from "zod";
+import { ZodSchema, ZodError } from "zod";
 import { BadRequestError } from "../utils/error";
 
 

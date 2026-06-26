@@ -24,8 +24,8 @@ const DateOverrideSchema = new Schema({
 
 const ProviderAvailabilitySchema = new Schema({
   providerId: { type: Schema.Types.ObjectId, ref: "ProviderProfile", required: true, unique: true },
-  startDate: { type: String, required: false }, // Format: YYYY-MM-DD
-  endDate: { type: String, required: false },   // Format: YYYY-MM-DD
+  startDate: { type: String, required: false },
+  endDate: { type: String, required: false },  
   weeklySchedule: {
     Monday: { type: DayScheduleSchema, default: { isAvailable: false, slots: [] } },
     Tuesday: { type: DayScheduleSchema, default: { isAvailable: false, slots: [] } },

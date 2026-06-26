@@ -6,10 +6,10 @@ const BookingSchema: Schema = new Schema({
   providerId: { type: Schema.Types.ObjectId, ref: "ProviderProfile", required: true },
   serviceId: { type: Schema.Types.ObjectId, ref: "Service", required: true },
   addressId: { type: Schema.Types.ObjectId, ref: "Address", required: true },
-  date: { type: String, required: true }, // Format: YYYY-MM-DD
+  date: { type: String, required: true }, 
   slot: {
-    start: { type: String, required: true }, // Format: HH:MM
-    end: { type: String, required: true }     // Format: HH:MM
+    start: { type: String, required: true }, 
+    end: { type: String, required: true }     
   },
   status: { 
     type: String, 
@@ -34,7 +34,6 @@ const BookingSchema: Schema = new Schema({
   }
 }, { timestamps: true });
 
-// Create indexes for fast lookup
 BookingSchema.index({ userId: 1 });
 BookingSchema.index({ providerId: 1 });
 BookingSchema.index({ date: 1 });

@@ -1,30 +1,25 @@
 import { Request, Response, NextFunction } from "express";
-import { BookingService } from "../services/booking.service";
+import { IBookingService } from "../interfaces/services/IBookingService";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
-import { BadRequestError } from "../utils/error";
+import { SUCCESS_MESSAGES } from "../constants/messages";
 
 export class BookingController {
-  private _bookingService: BookingService;
-
-  constructor() {
-    this._bookingService = new BookingService();
+  private readonly _bookingService: IBookingService;
+  constructor(bookingService: IBookingService) {
+    this._bookingService = bookingService;
   }
 
   getAvailableSlots = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { providerId, date } = req.query;
-
-      if (!providerId || !date) {
-        throw new BadRequestError("Provider ID and Date are required query parameters");
-      }
-
       const slots = await this._bookingService.getAvailableSlots(
         providerId as string,
         date as string
       );
-
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(slots));
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(slots, SUCCESS_MESSAGES.SLOTS_FETCHED)
+      );
     } catch (error) {
       next(error);
     }
@@ -32,11 +27,11 @@ export class BookingController {
 
   createBooking = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const data = req.body;
-
-      const booking = await this._bookingService.createBooking(userId, data);
-      res.status(HttpStatusCode.CREATED).json(createSuccessResponse(booking, "Booking request created successfully"));
+      const userId = req.user!.id;
+      const booking = await this._bookingService.createBooking(userId, req.body);
+      res.status(HttpStatusCode.CREATED).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_CREATED)
+      );
     } catch (error) {
       next(error);
     }
@@ -44,9 +39,10 @@ export class BookingController {
 
   getUserBookings = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const bookings = await this._bookingService.getUserBookings(userId);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(bookings));
+      const bookings = await this._bookingService.getUserBookings(req.user!.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(bookings, SUCCESS_MESSAGES.BOOKINGS_FETCHED)
+      );
     } catch (error) {
       next(error);
     }
@@ -54,9 +50,10 @@ export class BookingController {
 
   getProviderBookings = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const bookings = await this._bookingService.getProviderBookings(userId);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(bookings));
+      const bookings = await this._bookingService.getProviderBookings(req.user!.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(bookings, SUCCESS_MESSAGES.BOOKINGS_FETCHED)
+      );
     } catch (error) {
       next(error);
     }
@@ -64,36 +61,14 @@ export class BookingController {
 
   getBookingDetail = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const role = req.user.role;
-      const { id } = req.params;
-
-      const booking = await this._bookingService.getBookingDetail(id, userId, role);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking));
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  confirmBooking = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user.id;
-      const { id } = req.params;
-
-      const booking = await this._bookingService.updateBookingStatus(id, userId, "confirmed");
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Booking confirmed successfully"));
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  completeBooking = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user.id;
-      const { id } = req.params;
-
-      const booking = await this._bookingService.updateBookingStatus(id, userId, "completed");
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Booking completed successfully"));
+      const booking = await this._bookingService.getBookingDetail(
+        req.params.id,
+        req.user!.id,
+        req.user!.role
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_DETAIL_FETCHED)
+      );
     } catch (error) {
       next(error);
     }
@@ -101,11 +76,40 @@ export class BookingController {
 
   acceptBooking = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
+      const booking = await this._bookingService.acceptBooking(req.params.id, req.user!.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_ACCEPTED)
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
 
-      const booking = await this._bookingService.acceptBooking(id, userId);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Booking accepted successfully. Customer has been notified to pay."));
+  confirmBooking = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const booking = await this._bookingService.updateBookingStatus(
+        req.params.id,
+        req.user!.id,
+        "confirmed"
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_CONFIRMED)
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  completeBooking = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const booking = await this._bookingService.updateBookingStatus(
+        req.params.id,
+        req.user!.id,
+        "completed"
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_COMPLETED)
+      );
     } catch (error) {
       next(error);
     }
@@ -113,13 +117,15 @@ export class BookingController {
 
   cancelBooking = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const role = req.user.role;
-      const { id } = req.params;
-      const { reason } = req.body;
-
-      const booking = await this._bookingService.cancelBooking(id, userId, role, reason);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Booking cancelled successfully"));
+      const booking = await this._bookingService.cancelBooking(
+        req.params.id,
+        req.user!.id,
+        req.user!.role,
+        req.body.reason
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_CANCELLED)
+      );
     } catch (error) {
       next(error);
     }
@@ -127,25 +133,25 @@ export class BookingController {
 
   rescheduleBooking = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
-      const data = req.body;
-
-      const booking = await this._bookingService.rescheduleBooking(id, userId, data);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Booking rescheduled successfully"));
+      const booking = await this._bookingService.rescheduleBooking(
+        req.params.id,
+        req.user!.id,
+        req.body
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_RESCHEDULED)
+      );
     } catch (error) {
       next(error);
     }
   };
 
-  // --- OTP ENDPOINTS ---
-
   generateArrivalOtp = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const providerUserId = req.user.id;
-      const { id } = req.params;
-      const booking = await this._bookingService.generateArrivalOtp(id, providerUserId);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Arrival OTP generated successfully"));
+      const booking = await this._bookingService.generateArrivalOtp(req.params.id, req.user!.id);
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.ARRIVAL_OTP_GENERATED)
+      );
     } catch (error) {
       next(error);
     }
@@ -153,11 +159,14 @@ export class BookingController {
 
   verifyArrivalOtp = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const providerUserId = req.user.id;
-      const { id } = req.params;
-      const { otp } = req.body;
-      const booking = await this._bookingService.verifyArrivalOtp(id, providerUserId, otp);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Arrival OTP verified successfully. Job in progress."));
+      const booking = await this._bookingService.verifyArrivalOtp(
+        req.params.id,
+        req.user!.id,
+        req.body.otp
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.ARRIVAL_OTP_VERIFIED)
+      );
     } catch (error) {
       next(error);
     }
@@ -165,11 +174,14 @@ export class BookingController {
 
   generateCompletionOtp = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const providerUserId = req.user.id;
-      const { id } = req.params;
-      const { invoiceData } = req.body; // { baseCharge, extraCharges }
-      const booking = await this._bookingService.generateCompletionOtp(id, providerUserId, invoiceData);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Completion OTP generated successfully. Final Invoice saved."));
+      const booking = await this._bookingService.generateCompletionOtp(
+        req.params.id,
+        req.user!.id,
+        req.body.invoiceData
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.COMPLETION_OTP_GENERATED)
+      );
     } catch (error) {
       next(error);
     }
@@ -177,11 +189,14 @@ export class BookingController {
 
   verifyCompletionOtp = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const providerUserId = req.user.id;
-      const { id } = req.params;
-      const { otp } = req.body;
-      const booking = await this._bookingService.verifyCompletionOtp(id, providerUserId, otp);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Completion OTP verified successfully. Job completed."));
+      const booking = await this._bookingService.verifyCompletionOtp(
+        req.params.id,
+        req.user!.id,
+        req.body.otp
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(booking, SUCCESS_MESSAGES.COMPLETION_OTP_VERIFIED)
+      );
     } catch (error) {
       next(error);
     }

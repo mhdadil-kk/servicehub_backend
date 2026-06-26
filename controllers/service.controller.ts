@@ -1,13 +1,16 @@
 import { Request, Response, NextFunction } from "express";
 import { ServiceRepository } from "../repositories/service.repository";
+import { IServiceRepository } from "../interfaces/repositories/IServiceRepository";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
 import ProviderProfile from "../models/providerProfile.model";
 import User from "../models/user.model";
 import Service from "../models/service.model";
+import { FilterQuery } from "mongoose";
+import { IProviderProfile } from "../types/providerProfile.types";
 
 export class ServiceController {
-  private _serviceRepository: ServiceRepository;
+  private _serviceRepository: IServiceRepository;
 
   constructor() {
     this._serviceRepository = new ServiceRepository();
@@ -26,7 +29,7 @@ export class ServiceController {
     try {
       const { search, serviceId, latitude, longitude, radius } = req.query;
 
-      const query: any = { onboardingStatus: "approved" };
+      const query: FilterQuery<IProviderProfile> = { onboardingStatus: "approved" };
 
       if (serviceId) {
         query.serviceId = serviceId;
@@ -63,15 +66,15 @@ export class ServiceController {
   };
 }
 
-    // Pagination parameters
+    
     const limit = Number(req.query.limit) || 10;
     const page = Number(req.query.page) || 1;
     const skip = (page - 1) * limit;
 
-    // Sorting
+    
     const sortBy = (req.query.sortBy as string) || "createdAt";
     const sortOrder = (req.query.sortOrder as string) === "asc" ? 1 : -1;
-    const sortParams: any = {};
+    const sortParams: Record<string, 1 | -1> = {};
     if (sortBy === "hourlyRate") {
       sortParams.hourlyRate = sortOrder;
     } else {
@@ -80,7 +83,7 @@ export class ServiceController {
  
     const [providers, total] = await Promise.all([
       ProviderProfile.find(query)
-        .populate("userId", "name email phone role status")
+        .populate("userId", "name email phone role status profilePhoto")
         .populate("serviceId", "name description")
         .sort(sortParams)
         .limit(limit)

@@ -23,3 +23,21 @@ export const DocumentUploadSchema = z.object({
   body: z.object({
   }).optional()
 });
+
+export const LocationUpdateSchema = z.object({
+  body: z.object({
+    address: z.string().min(5).optional(),
+    latitude: z.coerce.number().optional(),
+    longitude: z.coerce.number().optional(),
+    serviceRadius: z.coerce.number().min(1).optional(),
+  }),
+});
+
+export const BankDetailsSchema = z.object({
+  body: z.object({
+    accountHolderName: z.string().min(1),
+    bankName: z.string().min(1),
+    accountNumber: z.string().min(1),
+    routingNumber: z.string().min(1),
+  }),
+});

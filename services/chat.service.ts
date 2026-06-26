@@ -1,158 +1,89 @@
-import mongoose from "mongoose";
-import Message from "../models/message.model";
-import Booking from "../models/booking.model";
-import Conversation from "../models/conversation.model";
-import ProviderProfile from "../models/providerProfile.model";
+import { IConversationRepository } from "../interfaces/repositories/IConversationRepository";
+import { IMessageRepository } from "../interfaces/repositories/IMessageRepository";
+import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
+import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
 import { IMessage } from "../types/chat.types";
-import { NotFoundError, BadRequestError } from "../utils/error";
+import { IConversation } from "../models/conversation.model";
+import { NotFoundError, BadRequestError, ForbiddenError } from "../utils/error";
+import { ERROR_MESSAGES } from "../constants/messages";
+import { IChatService, ConversationListItem } from "../interfaces/services/IChatService";
 
-export class ChatService {
-  /**
-   * Look up the provider participant in a conversation and return their
-   * service category name and profile photo from ProviderProfile.
-   */
-  private async resolveProviderInfo(participants: any[]): Promise<{ serviceName: string, profilePhoto?: string }> {
-    try {
-      const providerParticipant = participants.find((p: any) => p.role === "provider");
-      if (!providerParticipant) return { serviceName: "Service Provider" };
 
-      const profile = await ProviderProfile.findOne({ userId: providerParticipant._id })
-        .populate("serviceId", "name");
 
-      return {
-        serviceName: (profile as any)?.serviceId?.name || "Service Provider",
-        profilePhoto: profile?.profilePhoto
-      };
-    } catch {
-      return { serviceName: "Service Provider" };
-    }
-  }
+export class ChatService implements IChatService {
+    private _conversationRepository: IConversationRepository;
+  private _messageRepository: IMessageRepository;
+  private _providerProfileRepository: IProviderProfileRepository;
+  private _bookingRepository: IBookingRepository;
+  constructor(
+    conversationRepository: IConversationRepository,
+    messageRepository: IMessageRepository,
+    providerProfileRepository: IProviderProfileRepository,
+    bookingRepository: IBookingRepository
+  ) {
+    this._conversationRepository = conversationRepository;
+    this._messageRepository = messageRepository;
+    this._providerProfileRepository = providerProfileRepository;
+    this._bookingRepository = bookingRepository;
+}
 
-  /**
-   * Fetch all conversations for a user (no self-healing — conversations are
-   * created at booking-creation time and via explicit chat initiation).
-   */
-  async getConversations(userId: string, _role: string): Promise<any[]> {
-    // Fetch conversations where user is a participant
-    const conversations = await Conversation.find({ participants: userId })
-      .populate("participants", "name email role")
-      .populate({
-        path: "bookingId",
-        populate: { path: "serviceId", select: "name" }
-      })
-      .sort({ updatedAt: -1 });
+  async getConversations(userId: string): Promise<ConversationListItem[]> {
+    const conversations = await this._conversationRepository.findByUserIdPopulated(userId);
 
-    // For each conversation, attach last message + unread count + provider info
     const results = await Promise.all(
-      conversations.map(async (c: any) => {
-        const lastMsg = await Message.findOne({ conversationId: c._id })
-          .sort({ createdAt: -1 });
+      conversations.map(async (c) => {
+        const convId = c._id.toString();
+        const lastMessage = await this._messageRepository.findLastByConversationId(convId);
+        const unreadCount = await this._messageRepository.countUnread(convId, userId);
+        const providerInfo = await this.resolveProviderInfo(c.participants as unknown as { role: string }[]);
 
-        const unreadCount = await Message.countDocuments({
-          conversationId: c._id,
-          senderId: { $ne: userId },
-          read: false
-        });
-
-        const providerInfo = await this.resolveProviderInfo(c.participants);
         const obj = c.toObject();
-        
-        // Attach profile photo to the provider participant object
-        const pIndex = obj.participants.findIndex((p: any) => p.role === "provider");
+        const pIndex = obj.participants.findIndex((p: { role: string }) => p.role === "provider");
         if (pIndex >= 0 && providerInfo.profilePhoto) {
           obj.participants[pIndex].profilePhoto = providerInfo.profilePhoto;
         }
 
         return {
           ...obj,
-          lastMessage: lastMsg,
+          lastMessage,
           unreadCount,
-          providerServiceName: providerInfo.serviceName
+          providerServiceName: providerInfo.serviceName,
         };
       })
     );
 
-    // Sort by most recent message / updated time
     return results.sort((a, b) => {
-      const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : new Date(a.updatedAt).getTime();
-      const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : new Date(b.updatedAt).getTime();
+      const timeA = a.lastMessage
+        ? new Date(a.lastMessage.createdAt).getTime()
+        : new Date(a.updatedAt).getTime();
+      const timeB = b.lastMessage
+        ? new Date(b.lastMessage.createdAt).getTime()
+        : new Date(b.updatedAt).getTime();
       return timeB - timeA;
     });
   }
 
-  /**
-   * Create or fetch a conversation between two users.
-   * First checks for ANY existing conversation between them (booking-linked or direct).
-   * If multiple exist, returns the most recently active one.
-   * Only creates a new direct conversation if absolutely none exists.
-   */
-  async getOrCreateDirectConversation(userId: string, targetUserId: string): Promise<any> {
-    const userObjId   = new mongoose.Types.ObjectId(userId);
-    const targetObjId = new mongoose.Types.ObjectId(targetUserId);
-
-    // Look for ANY existing conversation between these two users
-    const existing = await Conversation.find({
-      participants: { $all: [userObjId, targetObjId], $size: 2 }
-    })
-      .populate("participants", "name email role")
-      .populate({ path: "bookingId", populate: { path: "serviceId", select: "name" } })
-      .sort({ updatedAt: -1 });
-
+  async getOrCreateDirectConversation(userId: string, targetUserId: string): Promise<unknown> {
+    const existing = await this._conversationRepository.findDirectBetweenUsers(userId, targetUserId);
     if (existing.length > 0) {
-      const conv = existing[0].toObject();
-      const providerInfo = await this.resolveProviderInfo(existing[0].participants);
-      
-      const pIndex = conv.participants.findIndex((p: any) => p.role === "provider");
-      if (pIndex >= 0 && providerInfo.profilePhoto) {
-        conv.participants[pIndex].profilePhoto = providerInfo.profilePhoto;
-      }
-      
-      conv.providerServiceName = providerInfo.serviceName;
-      return conv;
+      return this.enrichConversation(existing[0], userId);
     }
 
-    // No conversation at all — create a fresh direct one with sorted IDs
-    const sorted = [userObjId, targetObjId]
-      .sort((a, b) => a.toString().localeCompare(b.toString()));
-
-    const created = await Conversation.create({
-      participants: sorted,
-      bookingId: null
-    });
-
-    const populated = await Conversation.findById(created._id)
-      .populate("participants", "name email role");
-
-    const conv = (populated as any).toObject();
-    const providerInfo = await this.resolveProviderInfo(populated!.participants as any[]);
-    
-    const pIndex = conv.participants.findIndex((p: any) => p.role === "provider");
-    if (pIndex >= 0 && providerInfo.profilePhoto) {
-      conv.participants[pIndex].profilePhoto = providerInfo.profilePhoto;
-    }
-    
-    conv.providerServiceName = providerInfo.serviceName;
-    return conv;
+    const created = await this._conversationRepository.createDirect([userId, targetUserId]);
+    const populated = await this._conversationRepository.findByIdOrBookingIdPopulated(created._id.toString());
+    if (!populated) throw new NotFoundError(ERROR_MESSAGES.CHAT_CONVERSATION_NOT_FOUND);
+    return this.enrichConversation(populated, userId);
   }
 
-
   async getChatHistory(conversationIdOrBookingId: string, userId: string): Promise<IMessage[]> {
-    const conversation = await Conversation.findOne({
-      $or: [
-        { _id: conversationIdOrBookingId },
-        { bookingId: conversationIdOrBookingId }
-      ]
-    });
-
-    if (!conversation) {
-      throw new NotFoundError("Conversation not found");
+    const conversation = await this._conversationRepository.findByIdOrBookingIdPopulated(
+      conversationIdOrBookingId
+    );
+    if (!conversation) throw new NotFoundError(ERROR_MESSAGES.CHAT_CONVERSATION_NOT_FOUND);
+    if (!this._conversationRepository.isParticipant(conversation, userId)) {
+      throw new ForbiddenError(ERROR_MESSAGES.CHAT_ACCESS_DENIED);
     }
-
-    if (!conversation.participants.map(p => p.toString()).includes(userId)) {
-      throw new BadRequestError("Access denied");
-    }
-
-    return await Message.find({ conversationId: conversation._id }).sort({ createdAt: 1 });
+    return this._messageRepository.findByConversationId(conversation._id.toString());
   }
 
   async saveMessage(
@@ -161,123 +92,115 @@ export class ChatService {
     senderRole: "user" | "provider",
     content: string
   ): Promise<IMessage> {
-    let conversation = await Conversation.findOne({
-      $or: [
-        { _id: conversationIdOrBookingId },
-        { bookingId: conversationIdOrBookingId }
-      ]
-    });
+    let conversation = await this._conversationRepository.findByIdOrBookingIdPopulated(
+      conversationIdOrBookingId
+    );
 
     if (!conversation) {
-      const booking = await Booking.findById(conversationIdOrBookingId);
+      const booking = await this._bookingRepository.findById(conversationIdOrBookingId);
       if (booking) {
-        const provProfile = await ProviderProfile.findById(booking.providerId);
+        const provProfile = await this._providerProfileRepository.findById(booking.providerId.toString());
         if (provProfile) {
-          conversation = await Conversation.create({
-            participants: [booking.userId, provProfile.userId],
-            bookingId: booking._id
-          });
+          conversation = await this._conversationRepository.createForBooking(
+            [booking.userId.toString(), provProfile.userId.toString()],
+            booking._id.toString()
+          );
+          conversation = await this._conversationRepository.findByIdOrBookingIdPopulated(
+            conversation._id.toString()
+          );
         }
       }
     }
 
-    if (!conversation) {
-      throw new NotFoundError("Conversation not found");
+    if (!conversation) throw new NotFoundError(ERROR_MESSAGES.CHAT_CONVERSATION_NOT_FOUND);
+    if (!this._conversationRepository.isParticipant(conversation, senderId)) {
+      throw new ForbiddenError(ERROR_MESSAGES.CHAT_ACCESS_DENIED);
     }
 
-    const message = new Message({
-      conversationId: conversation._id,
-      bookingId: conversation.bookingId || undefined,
+    const savedMsg = await this._messageRepository.createTextMessage({
+      conversationId: conversation._id.toString(),
+      bookingId: conversation.bookingId?.toString() ?? null,
       senderId,
       senderRole,
       content,
-      read: false,
-      delivered: false
     });
 
-    const savedMsg = await message.save();
-
-    // Touch conversation to update updatedAt timestamp
-    await Conversation.findByIdAndUpdate(conversation._id, { updatedAt: new Date() });
-
+    await this._conversationRepository.touchUpdatedAt(conversation._id.toString());
     return savedMsg;
   }
 
   async markAsRead(conversationIdOrBookingId: string, userId: string): Promise<void> {
-    let conversation = await Conversation.findOne({
-      $or: [
-        { _id: conversationIdOrBookingId },
-        { bookingId: conversationIdOrBookingId }
-      ]
-    });
-
-    if (conversation) {
-      await Message.updateMany(
-        { conversationId: conversation._id, senderId: { $ne: userId }, read: false },
-        { $set: { read: true, delivered: true } }
-      );
-    }
+    const conversation = await this._conversationRepository.findByIdOrBookingIdPopulated(
+      conversationIdOrBookingId
+    );
+    if (!conversation) return;
+    if (!this._conversationRepository.isParticipant(conversation, userId)) return;
+    await this._messageRepository.markReadByConversation(conversation._id.toString(), userId);
   }
 
   async markAsDelivered(userId: string): Promise<string[]> {
-    // Find conversations where the user is a participant
-    const conversations = await Conversation.find({ participants: userId }).select("_id");
-    const conversationIds = conversations.map(c => c._id);
+    const conversations = await this._conversationRepository.findByUserIdPopulated(userId);
+    const conversationIds = conversations.map((c) => c._id.toString());
+    const undeliveredIds = await this._messageRepository.findUndeliveredConversationIds(
+      userId,
+      conversationIds
+    );
+    await this._messageRepository.markDeliveredForUserInConversations(conversationIds, userId);
+    return undeliveredIds;
+  }
 
-    // Find all un-delivered messages sent TO this user (sender != userId) in these conversations
-    const undeliveredMessages = await Message.find({
-      conversationId: { $in: conversationIds },
-      senderId: { $ne: userId },
-      delivered: false
-    }).select("conversationId");
-
-    const uniqueConversationIds = Array.from(new Set(undeliveredMessages.map(m => m.conversationId.toString())));
-
-    // Mark them as delivered
-    if (uniqueConversationIds.length > 0) {
-      await Message.updateMany(
-        { 
-          conversationId: { $in: conversationIds },
-          senderId: { $ne: userId },
-          delivered: false
-        },
-        { $set: { delivered: true } }
-      );
-    }
-
-    return uniqueConversationIds;
+  async markMessageDelivered(messageId: string): Promise<void> {
+    await this._messageRepository.updateById(messageId, { delivered: true } as Partial<IMessage>);
   }
 
   async deleteConversation(conversationId: string, userId: string): Promise<void> {
-    const conversation = await Conversation.findById(conversationId);
-    if (!conversation) {
-      throw new NotFoundError("Conversation not found");
+    const conversation = await this._conversationRepository.findById(conversationId);
+    if (!conversation) throw new NotFoundError(ERROR_MESSAGES.CHAT_CONVERSATION_NOT_FOUND);
+    if (!this._conversationRepository.isParticipant(conversation, userId)) {
+      throw new ForbiddenError(ERROR_MESSAGES.CHAT_ACCESS_DENIED);
     }
-
-    if (!conversation.participants.map(p => p.toString()).includes(userId)) {
-      throw new BadRequestError("Access denied");
-    }
-
-    // Delete all messages associated with the conversation
-    await Message.deleteMany({ conversationId });
-    
-    // Delete the conversation itself
-    await Conversation.findByIdAndDelete(conversationId);
+    await this._messageRepository.deleteByConversationId(conversationId);
+    await this._conversationRepository.deleteById(conversationId);
   }
 
   async deleteMessage(messageId: string, userId: string): Promise<IMessage> {
-    const message = await Message.findById(messageId);
-    if (!message) {
-      throw new NotFoundError("Message not found");
+    const updated = await this._messageRepository.softDelete(messageId, userId);
+    if (!updated) {
+      const message = await this._messageRepository.findById(messageId);
+      if (!message) throw new NotFoundError(ERROR_MESSAGES.CHAT_MESSAGE_NOT_FOUND);
+      throw new ForbiddenError(ERROR_MESSAGES.CHAT_CANNOT_DELETE_MESSAGE);
     }
+    return updated;
+  }
 
-    // Only the sender can delete their own message
-    if (message.senderId.toString() !== userId) {
-      throw new BadRequestError("You can only delete your own messages");
+  private async resolveProviderInfo(
+    participants: { role: string; _id?: any; id?: any }[]
+  ): Promise<{ serviceName: string; profilePhoto?: string }> {
+    try {
+      const providerParticipant = participants.find((p) => p.role === "provider");
+      if (!providerParticipant) return { serviceName: "Service Provider" };
+
+      const profile = await this._providerProfileRepository.findByUserIdWithDetails(
+        providerParticipant._id.toString()
+      );
+
+      return {
+        serviceName: (profile as unknown as { serviceId?: { name: string } })?.serviceId?.name || "Service Provider",
+        profilePhoto: profile?.profilePhoto,
+      };
+    } catch {
+      return { serviceName: "Service Provider" };
     }
+  }
 
-    message.isDeleted = true;
-    message.content = "This message was deleted";
-    return await message.save();
+  private async enrichConversation(conversation: IConversation, _userId: string) {
+    const obj = conversation.toObject();
+    const providerInfo = await this.resolveProviderInfo(obj.participants as unknown as { role: string; _id?: any; id?: any }[]);
+    const pIndex = obj.participants.findIndex((p: { role: string }) => p.role === "provider");
+    if (pIndex >= 0 && providerInfo.profilePhoto) {
+      obj.participants[pIndex].profilePhoto = providerInfo.profilePhoto;
+    }
+    obj.providerServiceName = providerInfo.serviceName;
+    return obj;
   }
 }
