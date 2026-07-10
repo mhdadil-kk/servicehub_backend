@@ -1,8 +1,8 @@
 import { HttpStatusCode } from "../types/http";
 
 export class AppError extends Error {
-  public readonly statusCode: HttpStatusCode;
-  public readonly isOperational: boolean;
+  public  statusCode: HttpStatusCode;
+  public  isOperational: boolean;
 
   constructor(message: string, statusCode: HttpStatusCode, isOperational: boolean = true) {
     super(message);

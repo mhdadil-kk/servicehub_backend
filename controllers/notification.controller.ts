@@ -3,9 +3,10 @@ import { INotificationService } from "../interfaces/services/INotificationServic
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
 import { SUCCESS_MESSAGES } from "../constants/messages";
+import { NotificationMapper } from "../mappers/notification.mapper";
 
 export class NotificationController {
-  private readonly _notificationService: INotificationService;
+  private  _notificationService: INotificationService;
 
   constructor(notificationService: INotificationService){
     this._notificationService = notificationService;
@@ -14,10 +15,13 @@ export class NotificationController {
   getNotifications = async (req: Request, res: Response, next: NextFunction) =>{
     try{
       const userId = req.user!.id;
-      const result = await this._notificationService.getByUserId(userId);
+      const { notifications, unreadCount } = await this._notificationService.getByUserId(userId);
 
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(result));
-    }catch(error) {
+      res.status(HttpStatusCode.OK).json(createSuccessResponse({
+        notifications: NotificationMapper.toArrayResponse(notifications || []),
+        unreadCount: unreadCount || 0
+      }));
+    } catch(error) {
       next(error);
     }
   };
@@ -29,7 +33,7 @@ export class NotificationController {
 
       const notification = await this._notificationService.markAsRead(id,userId);
 
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(notification));
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(NotificationMapper.toResponse(notification)));
     }catch(error){
       next(error)
     }

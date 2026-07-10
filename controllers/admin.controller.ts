@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import { IAdminService } from "../interfaces/services/IAdminService";
 import { createSuccessResponse } from "../types/response";
 import { UserMapper } from "../mappers/user.mapper";
+import { ServiceMapper } from "../mappers/service.mapper";
+import { ProviderProfileMapper } from "../mappers/providerProfile.mapper";
 import { HttpStatusCode } from "../types/http";
 import { SUCCESS_MESSAGES } from "../constants/messages";
 
@@ -92,7 +94,7 @@ export class AdminController {
   addService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const service = await this._adminService.addService(req.body);
-      res.status(HttpStatusCode.CREATED).json(createSuccessResponse(service, SUCCESS_MESSAGES.SERVICE_CATEGORY_CREATED));
+      res.status(HttpStatusCode.CREATED).json(createSuccessResponse(ServiceMapper.toResponse(service), SUCCESS_MESSAGES.SERVICE_CATEGORY_CREATED));
     } catch (error: unknown) {
       next(error);
     }
@@ -101,7 +103,7 @@ export class AdminController {
   getAllServices = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const services = await this._adminService.getAllServices();
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(services));
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(ServiceMapper.toArrayResponse(services)));
     } catch (error: unknown) {
       next(error);
     }
@@ -121,7 +123,7 @@ export class AdminController {
   getProviderDetail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const provider = await this._adminService.getProviderDetail(req.params.id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(provider));
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(ProviderProfileMapper.toResponse(provider)));
     } catch (error: unknown) {
       next(error);
     }
@@ -137,4 +139,44 @@ export class AdminController {
       next(error);
     }
   };
+
+  getDashboardStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const timeRange = req.query.timeRange as string;
+      const stats = await this._adminService.getDashboardStats(timeRange);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(stats, SUCCESS_MESSAGES.DASHBOARD_STATS_FETCHED));
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+
+  getAllBookings = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const search = req.query.search as string;
+      const status = req.query.status as string;
+      const sort = req.query.sort as string;
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 10;
+      
+      const { bookings, total } = await this._adminService.getAllBookings(search, status, sort, page, limit);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse({
+        bookings,
+        total,
+        page,
+        limit
+      }));
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+
+  getBookingById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const booking = await this._adminService.getBookingById(req.params.id);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking));
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
 }
+

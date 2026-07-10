@@ -3,9 +3,11 @@ import { IChatService } from "../interfaces/services/IChatService";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
 import { SUCCESS_MESSAGES } from "../constants/messages";
+import { ConversationMapper } from "../mappers/conversation.mapper";
+import { MessageMapper } from "../mappers/message.mapper";
 
 export class ChatController {
-  private readonly _chatService: IChatService;
+  private  _chatService: IChatService;
   constructor(chatService: IChatService) {
     this._chatService = chatService;
   }
@@ -14,7 +16,7 @@ export class ChatController {
     try {
       const conversations = await this._chatService.getConversations(req.user!.id);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(conversations, SUCCESS_MESSAGES.CONVERSATIONS_FETCHED)
+        createSuccessResponse(ConversationMapper.toArrayResponse(conversations, true), SUCCESS_MESSAGES.CONVERSATIONS_FETCHED)
       );
     } catch (error) {
       next(error);
@@ -27,7 +29,7 @@ export class ChatController {
         req.user!.id,
         req.body.targetUserId
       );
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(conversation));
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(ConversationMapper.toDetailedResponse(conversation)));
     } catch (error) {
       next(error);
     }
@@ -37,7 +39,7 @@ export class ChatController {
     try {
       const history = await this._chatService.getChatHistory(req.params.bookingId, req.user!.id);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(history, SUCCESS_MESSAGES.CHAT_HISTORY_FETCHED)
+        createSuccessResponse(MessageMapper.toArrayResponse(history), SUCCESS_MESSAGES.CHAT_HISTORY_FETCHED)
       );
     } catch (error) {
       next(error);

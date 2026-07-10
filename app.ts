@@ -38,6 +38,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 import notificationRoutes from "./routes/notification.routes";
 import walletRoutes from "./routes/wallet.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
+import reportRoutes from "./routes/report.routes";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
@@ -52,6 +53,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/reports", reportRoutes);
 
 app.use(globalErrorHandler);
 

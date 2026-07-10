@@ -27,4 +27,12 @@ export const documentStorage = new CloudinaryStorage({
   } as Record<string, unknown>,
 });
 
+export const reportStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "servicehub/reports",
+    allowed_formats: ["jpg", "png", "jpeg"],
+  } as Record<string, unknown>,
+});
+
 export default cloudinary;

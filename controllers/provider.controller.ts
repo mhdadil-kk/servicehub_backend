@@ -3,9 +3,11 @@ import { IProviderService } from "../interfaces/services/IProviderService";
 import { HttpStatusCode } from "../types/http";
 import { createSuccessResponse } from "../types/response";
 import { SUCCESS_MESSAGES } from "../constants/messages";
+import { ProviderProfileMapper } from "../mappers/providerProfile.mapper";
+import { ProviderAvailabilityMapper } from "../mappers/providerAvailability.mapper";
 
 export class ProviderController {
-  private readonly _providerService: IProviderService;
+  private  _providerService: IProviderService;
   constructor(providerService: IProviderService) {
     this._providerService = providerService;
   }
@@ -24,7 +26,7 @@ export class ProviderController {
       });
 
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(profile, SUCCESS_MESSAGES.PROFILE_UPDATED)
+        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_UPDATED)
       );
     } catch (error) {
       next(error);
@@ -44,7 +46,7 @@ export class ProviderController {
       });
 
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(profile, SUCCESS_MESSAGES.LOCATION_UPDATED)
+        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.LOCATION_UPDATED)
       );
     } catch (error) {
       next(error);
@@ -62,7 +64,7 @@ export class ProviderController {
       });
 
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(profile, SUCCESS_MESSAGES.SERVICE_DETAILS_UPDATED)
+        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.SERVICE_DETAILS_UPDATED)
       );
     } catch (error) {
       next(error);
@@ -90,7 +92,7 @@ export class ProviderController {
       const profile = await this._providerService.uploadVerificationDocs(userId, documents);
 
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(profile, SUCCESS_MESSAGES.DOCUMENTS_UPLOADED)
+        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.DOCUMENTS_UPLOADED)
       );
     } catch (error) {
       next(error);
@@ -103,7 +105,7 @@ export class ProviderController {
       const profile = await this._providerService.updateBankDetails(userId, req.body);
 
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(profile, SUCCESS_MESSAGES.BANK_DETAILS_UPDATED)
+        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.BANK_DETAILS_UPDATED)
       );
     } catch (error) {
       next(error);
@@ -116,7 +118,7 @@ export class ProviderController {
       const profile = await this._providerService.resetForReapply(userId);
 
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(profile, SUCCESS_MESSAGES.PROFILE_RESET)
+        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_RESET)
       );
     } catch (error) {
       next(error);
@@ -129,7 +131,7 @@ export class ProviderController {
       const profile = await this._providerService.getProfile(userId);
 
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(profile, SUCCESS_MESSAGES.PROFILE_FETCHED)
+        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_FETCHED)
       );
     } catch (error) {
       next(error);
@@ -142,7 +144,7 @@ export class ProviderController {
       const availability = await this._providerService.getAvailability(userId);
 
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(availability, SUCCESS_MESSAGES.AVAILABILITY_FETCHED)
+        createSuccessResponse(ProviderAvailabilityMapper.toResponse(availability), SUCCESS_MESSAGES.AVAILABILITY_FETCHED)
       );
     } catch (error) {
       next(error);
@@ -155,7 +157,7 @@ export class ProviderController {
       const availability = await this._providerService.updateAvailability(userId, req.body);
 
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(availability, SUCCESS_MESSAGES.AVAILABILITY_UPDATED)
+        createSuccessResponse(ProviderAvailabilityMapper.toResponse(availability), SUCCESS_MESSAGES.AVAILABILITY_UPDATED)
       );
     } catch (error) {
       next(error);

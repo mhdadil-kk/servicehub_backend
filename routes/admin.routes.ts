@@ -81,5 +81,22 @@ router.delete(ROUTES.ADMIN.SERVICE_BY_ID,
     adminController.deleteService
 );
 
+router.get(ROUTES.ADMIN.DASHBOARD,
+    authMiddleware,
+    roleMiddleware(["admin"]),
+    adminController.getDashboardStats
+);
+
+router.get(ROUTES.ADMIN.BOOKINGS,
+    authMiddleware,
+    roleMiddleware(["admin"]),
+    adminController.getAllBookings
+);
+
+router.get(ROUTES.ADMIN.BOOKING_BY_ID,
+    authMiddleware,
+    roleMiddleware(["admin"]),
+    adminController.getBookingById
+);
 
 export default router;

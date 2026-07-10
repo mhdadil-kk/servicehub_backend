@@ -318,6 +318,111 @@ export class BookingService implements IBookingService {
     });
   }
 
+  async providerRescheduleBooking(
+    bookingId: string,
+    providerUserId: string,
+    data: Partial<CreateBookingInput>
+  ): Promise<IBooking> {
+    const profile = await this.getProviderProfileOrThrow(providerUserId);
+    const originalBooking = await this._bookingRepository.findOneForProvider(bookingId, profile._id.toString());
+    
+    if (!originalBooking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+
+    if (originalBooking.status === "cancelled" || originalBooking.status === "completed") {
+      throw new BadRequestError(`${ERROR_MESSAGES.CANNOT_RESCHEDULE_BOOKING} Current status: ${originalBooking.status}`);
+    }
+
+    if (this.hoursUntilBooking(originalBooking.date, originalBooking.slot.start) < 2) {
+      throw new BadRequestError(ERROR_MESSAGES.RESCHEDULE_WITHIN_2_HOURS);
+    }
+
+    await this._bookingRepository.updateStatus(bookingId, {
+      status: "cancelled",
+      cancelledBy: "provider",
+      cancellationReason: "Rescheduled by provider",
+    });
+
+    const newBooking = await this.createBooking(originalBooking.userId.toString(), {
+      providerId: originalBooking.providerId.toString(),
+      serviceId: originalBooking.serviceId.toString(),
+      addressId: data.addressId || originalBooking.addressId.toString(),
+      date: data.date!,
+      slot: data.slot!,
+      notes: data.notes || originalBooking.notes,
+      rescheduledFrom: originalBooking._id.toString(),
+    });
+
+    await this._bookingRepository.updateStatus(newBooking._id.toString(), {
+      status: "awaiting_user_confirmation",
+    });
+    newBooking.status = "awaiting_user_confirmation";
+
+    await this._bookingRepository.updateStatus(bookingId, {
+      rescheduledTo: newBooking._id,
+    } as Partial<IBooking>);
+
+    await this._notificationService.create({
+      userId: originalBooking.userId.toString(),
+      title: "Booking Rescheduled",
+      message: `Your provider rescheduled the booking for ${data.date} at ${data.slot!.start}. Please accept or reject this new time.`,
+      type: "warning",
+      relatedId: newBooking._id.toString(),
+    });
+
+    return newBooking;
+  }
+
+  async customerAcceptReschedule(bookingId: string, userId: string): Promise<IBooking> {
+    const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
+    if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+    if ((booking.userId as any)._id.toString() !== userId) throw new BadRequestError("Unauthorized");
+    if (booking.status !== "awaiting_user_confirmation") throw new BadRequestError("Booking is not awaiting confirmation");
+
+    const updated = await this._bookingRepository.updateStatus(bookingId, { status: "confirmed" });
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+
+    const provProfile = await this._providerProfileRepository.findById((booking.providerId as any)._id.toString());
+    if (provProfile) {
+      await this._notificationService.create({
+        userId: provProfile.userId.toString(),
+        title: "Reschedule Accepted",
+        message: `The customer accepted the new booking time.`,
+        type: "success",
+        relatedId: bookingId,
+      });
+    }
+
+    return updated;
+  }
+
+  async customerRejectReschedule(bookingId: string, userId: string): Promise<IBooking> {
+    const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
+    if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+    if ((booking.userId as any)._id.toString() !== userId) throw new BadRequestError("Unauthorized");
+    if (booking.status !== "awaiting_user_confirmation") throw new BadRequestError("Booking is not awaiting confirmation");
+
+    const updated = await this._bookingRepository.updateStatus(bookingId, { 
+      status: "cancelled",
+      cancelledBy: "user",
+      cancellationReason: "Customer rejected the rescheduled time"
+    });
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+
+    const provProfile = await this._providerProfileRepository.findById((booking.providerId as any)._id.toString());
+    if (provProfile) {
+      await this._notificationService.create({
+        userId: provProfile.userId.toString(),
+        title: "Reschedule Rejected",
+        message: `The customer rejected the new booking time. The booking has been cancelled.`,
+        type: "warning",
+        relatedId: bookingId,
+      });
+    }
+
+    return updated;
+  }
+
+
   async generateArrivalOtp(bookingId: string, providerUserId: string): Promise<IBooking> {
     const profile = await this.getProviderProfileOrThrow(providerUserId);
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
@@ -346,7 +451,7 @@ export class BookingService implements IBookingService {
       await this._mailer.sendBookingOTP(
         customer.email,
         "Provider Arrived - Verification Code",
-        "Your service provider has arrived at the location.",
+        "Your service provider has arrived at the location.", 
         otp
       );
     }

@@ -3,6 +3,8 @@ import { ServiceRepository } from "../repositories/service.repository";
 import { IServiceRepository } from "../interfaces/repositories/IServiceRepository";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
+import { ServiceMapper } from "../mappers/service.mapper";
+import { ProviderProfileMapper } from "../mappers/providerProfile.mapper";
 import ProviderProfile from "../models/providerProfile.model";
 import User from "../models/user.model";
 import Service from "../models/service.model";
@@ -19,7 +21,7 @@ export class ServiceController {
   getActiveServices = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const services = await this._serviceRepository.findActive();
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(services));
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(ServiceMapper.toArrayResponse(services)));
     } catch (error) {
       next(error);
     }
@@ -93,7 +95,8 @@ export class ServiceController {
     ]);
 
     const totalPages = Math.ceil(total / limit) || 1;
-    res.status(HttpStatusCode.OK).json(createSuccessResponse({ providers, total, totalPages, page, limit }));
+    const mappedProviders = ProviderProfileMapper.toArrayResponse(providers, true);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse({ providers: mappedProviders, total, totalPages, page, limit }));
 
     } catch (error) {
       next(error);

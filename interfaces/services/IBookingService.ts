@@ -25,6 +25,9 @@ export interface IBookingService {
   ): Promise<IBooking>;
   cancelBooking(bookingId: string, userId: string, role: string, reason: string): Promise<IBooking>;
   rescheduleBooking(bookingId: string, userId: string, data: Partial<CreateBookingInput>): Promise<IBooking>;
+  providerRescheduleBooking(bookingId: string, providerUserId: string, data: Partial<CreateBookingInput>): Promise<IBooking>;
+  customerAcceptReschedule(bookingId: string, userId: string): Promise<IBooking>;
+  customerRejectReschedule(bookingId: string, userId: string): Promise<IBooking>;
   generateArrivalOtp(bookingId: string, providerUserId: string): Promise<IBooking>;
   verifyArrivalOtp(bookingId: string, providerUserId: string, otp: string): Promise<IBooking>;
   generateCompletionOtp(

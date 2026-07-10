@@ -62,6 +62,10 @@ export const ERROR_MESSAGES = {
   ADDRESS_NOT_FOUND: "Address not found.",
   ADDRESS_LABEL_REQUIRED: "Label and full address are required.",
   
+  REPORT_NOT_FOUND: "Report not found.",
+  REPORT_FORBIDDEN: "You are not authorized to access this report.",
+  REPORT_FIELDS_REQUIRED: "Report category and description are required.",
+
   CHAT_CONVERSATION_NOT_FOUND: "Conversation not found.",
   CHAT_ACCESS_DENIED: "Access denied to this conversation.",
   CHAT_MESSAGE_NOT_FOUND: "Message not found.",
@@ -139,4 +143,9 @@ export const SUCCESS_MESSAGES = {
   PASSWORD_RESET_SUCCESS: "Password reset successfully.",
   TOKEN_REFRESHED: "Token refreshed successfully",
   PASSWORD_CHANGED: "Password changed successfully",
+
+  REPORT_CREATED: "Report submitted successfully.",
+  REPORT_UPDATED: "Report updated successfully.",
+  REPORTS_FETCHED: "Reports fetched successfully.",
+  DASHBOARD_STATS_FETCHED: "Dashboard statistics fetched successfully.",
 };

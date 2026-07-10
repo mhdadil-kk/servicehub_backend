@@ -165,6 +165,6 @@ export class BookingRepository
   }
 
   async updateStatus(bookingId: string, data: Partial<IBooking>): Promise<IBooking | null> {
-    return this.update(bookingId, data);
+    return this.model.findByIdAndUpdate(bookingId, { $set: data }, { new: true }).exec();
   }
 }

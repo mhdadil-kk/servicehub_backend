@@ -6,7 +6,7 @@ import { INotificationService } from "../interfaces/services/INotificationServic
 
 
 export class NotificationService implements INotificationService {
-    private readonly _notificationRepository: INotificationRepository;
+    private  _notificationRepository: INotificationRepository;
 
     constructor(notificationRepository :INotificationRepository){
       this._notificationRepository = notificationRepository

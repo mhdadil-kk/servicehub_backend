@@ -6,7 +6,7 @@ import { ReviewMapper } from "../mappers/review.mapper";
 import { SUCCESS_MESSAGES } from "../constants/messages";
 
 export class ReviewController {
-  private readonly _reviewService: IReviewService;
+  private  _reviewService: IReviewService;
   constructor(reviewService: IReviewService) {
     this._reviewService = reviewService;
   }

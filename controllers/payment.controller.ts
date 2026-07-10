@@ -5,7 +5,7 @@ import { createSuccessResponse } from "../types/response";
 import { SUCCESS_MESSAGES } from "../constants/messages";
 
 export class PaymentController {
-  private readonly _paymentService: IPaymentService;
+  private  _paymentService: IPaymentService;
   constructor(paymentService: IPaymentService) {
     this._paymentService = paymentService;
   }

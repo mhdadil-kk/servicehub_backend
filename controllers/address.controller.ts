@@ -3,9 +3,10 @@ import { IAddressService } from "../interfaces/services/IAddressService";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
 import { SUCCESS_MESSAGES } from "../constants/messages";
+import { AddressMapper } from "../mappers/address.mapper";
 
 export class AddressController {
-  private readonly _addressService: IAddressService;
+  private _addressService: IAddressService;
   constructor(addressService: IAddressService) {
     this._addressService = addressService;
   }
@@ -14,7 +15,7 @@ export class AddressController {
     try {
       const addresses = await this._addressService.getAddresses(req.user!.id);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(addresses, SUCCESS_MESSAGES.ADDRESSES_FETCHED)
+        createSuccessResponse(AddressMapper.toArrayResponse(addresses), SUCCESS_MESSAGES.ADDRESSES_FETCHED)
       );
     } catch (error) {
       next(error);
@@ -25,7 +26,7 @@ export class AddressController {
     try {
       const address = await this._addressService.createAddress(req.user!.id, req.body);
       res.status(HttpStatusCode.CREATED).json(
-        createSuccessResponse(address, SUCCESS_MESSAGES.ADDRESS_CREATED)
+        createSuccessResponse(AddressMapper.toResponse(address), SUCCESS_MESSAGES.ADDRESS_CREATED)
       );
     } catch (error) {
       next(error);
@@ -36,7 +37,7 @@ export class AddressController {
     try {
       const address = await this._addressService.updateAddress(req.user!.id, req.params.id, req.body);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(address, SUCCESS_MESSAGES.ADDRESS_UPDATED)
+        createSuccessResponse(AddressMapper.toResponse(address), SUCCESS_MESSAGES.ADDRESS_UPDATED)
       );
     } catch (error) {
       next(error);
@@ -58,7 +59,7 @@ export class AddressController {
     try {
       const address = await this._addressService.setDefaultAddress(req.user!.id, req.params.id);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(address, SUCCESS_MESSAGES.ADDRESS_DEFAULT_SET)
+        createSuccessResponse(AddressMapper.toResponse(address), SUCCESS_MESSAGES.ADDRESS_DEFAULT_SET)
       );
     } catch (error) {
       next(error);

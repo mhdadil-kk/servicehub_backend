@@ -10,11 +10,12 @@ export interface IBooking extends Document {
     start: string; 
     end: string; 
   };
-  status: "pending" | "awaiting_payment" | "confirmed" | "in_progress" | "completed_pending_payment" | "completed" | "cancelled" | "rescheduled";
+  status: "pending" | "awaiting_payment" | "confirmed" | "in_progress" | "completed_pending_payment" | "completed" | "cancelled" | "rescheduled" | "awaiting_user_confirmation";
   notes?: string;
   cancelledBy?: "user" | "provider";
   cancellationReason?: string;
   rescheduledFrom?: mongoose.Types.ObjectId;
+  rescheduledTo?: mongoose.Types.ObjectId;
   totalAmount: number;
   paymentStatus: "pending" | "paid" | "failed" | "fully_paid";
   stripeSessionId?: string;

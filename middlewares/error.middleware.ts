@@ -26,6 +26,7 @@ export const globalErrorHandler = (
   }
 
   if (err instanceof Error && err.name === "ValidationError") {
+    logger.error("ValidationError caught:", err);
     statusCode = HttpStatusCode.BAD_REQUEST;
     message = ERROR_MESSAGES.VALIDATION_ERROR;
   }

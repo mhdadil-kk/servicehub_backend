@@ -1,6 +1,6 @@
 import multer, { FileFilterCallback } from "multer";
 import { Request } from "express";
-import { profileStorage, documentStorage } from "../config/cloudinary.config";
+import { profileStorage, documentStorage, reportStorage } from "../config/cloudinary.config";
 
 const profileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
   if (["image/jpeg", "image/jpg", "image/png"].includes(file.mimetype)) {
@@ -28,5 +28,11 @@ export const uploadDocuments = multer({
   storage: documentStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, 
   fileFilter: docFilter
+});
+
+export const uploadScreenshot = multer({
+  storage: reportStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, 
+  fileFilter: profileFilter
 });
 

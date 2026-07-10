@@ -5,7 +5,7 @@ import { createSuccessResponse } from "../types/response";
 import { SUCCESS_MESSAGES } from "../constants/messages";
 
 export class DashboardController {
-  private readonly _dashboardService: IDashboardService;
+  private  _dashboardService: IDashboardService;
   constructor(dashboardService: IDashboardService) {
     this._dashboardService = dashboardService;
   }

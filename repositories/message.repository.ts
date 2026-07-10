@@ -32,7 +32,7 @@ export class MessageRepository
   async findLastByConversationId(conversationId: string): Promise<IMessage | null> {
     return this.model
       .findOne({ conversationId } as FilterQuery<IMessage>)
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1 }) 
       .exec();
   }
 

@@ -71,6 +71,16 @@ router.patch(
     bookingController.rescheduleBooking
 );
 
+router.patch(
+    ROUTES.BOOKINGS.PROVIDER_RESCHEDULE,
+    roleMiddleware(["provider"]),
+    validate(RescheduleBookingSchema),
+    bookingController.providerRescheduleBooking
+);
+
+router.patch(ROUTES.BOOKINGS.ACCEPT_RESCHEDULE, roleMiddleware(["user"]), bookingController.customerAcceptReschedule);
+router.patch(ROUTES.BOOKINGS.REJECT_RESCHEDULE, roleMiddleware(["user"]), bookingController.customerRejectReschedule);
+
 router.patch(ROUTES.BOOKINGS.ACCEPT, roleMiddleware(["provider"]), bookingController.acceptBooking);
 router.patch(ROUTES.BOOKINGS.CONFIRM, roleMiddleware(["provider"]), bookingController.confirmBooking);
 router.patch(ROUTES.BOOKINGS.COMPLETE, roleMiddleware(["provider"]), bookingController.completeBooking);

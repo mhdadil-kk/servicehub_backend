@@ -106,7 +106,7 @@ export class AuthController {
 
   changePassword = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user!.id;
       const { oldPassword, newPassword } = req.body;
       await this._authService.changePassword(userId, oldPassword, newPassword);
       res.status(HttpStatusCode.OK).json(
@@ -117,7 +117,7 @@ export class AuthController {
 
   updateProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user!.id;
       const { name, phone } = req.body;
       const { user } = await this._authService.updateProfile(userId, { name, phone });
       res.status(HttpStatusCode.OK).json(

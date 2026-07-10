@@ -3,9 +3,11 @@ import { IWalletService } from "../interfaces/services/IWalletService";
 import { HttpStatusCode } from "../types/http";
 import { createSuccessResponse } from "../types/response";
 import { SUCCESS_MESSAGES } from "../constants/messages";
+import { WalletMapper } from "../mappers/wallet.mapper";
+import { TransactionMapper } from "../mappers/transaction.mapper";
 
 export class WalletController {
-  private readonly _walletService: IWalletService;
+  private  _walletService: IWalletService;
   constructor(walletService: IWalletService) {
     this._walletService = walletService;
   }
@@ -17,7 +19,10 @@ export class WalletController {
       const transactions = await this._walletService.getHistory(userId);
 
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse({ wallet, transactions }, SUCCESS_MESSAGES.WALLET_FETCHED)
+        createSuccessResponse({ 
+          wallet: WalletMapper.toResponse(wallet), 
+          transactions: TransactionMapper.toArrayResponse(transactions) 
+        }, SUCCESS_MESSAGES.WALLET_FETCHED)
       );
     } catch (error) {
       next(error);

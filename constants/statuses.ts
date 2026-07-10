@@ -21,7 +21,12 @@ export const ACTIVE_PROVIDER_BOOKING_STATUSES = [
 
 export const COMPLETED_BOOKING_STATUS = "completed" as const;
 
-export const ACTIVE_SLOT_BOOKING_STATUSES = ["pending", "confirmed"] as const;
+export const ACTIVE_SLOT_BOOKING_STATUSES = [
+  "pending",
+  "awaiting_payment",
+  "confirmed",
+  "awaiting_user_confirmation",
+] as const;
 
 export const CANCELLABLE_BOOKING_STATUSES = [
   "pending",

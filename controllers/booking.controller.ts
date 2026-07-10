@@ -3,9 +3,10 @@ import { IBookingService } from "../interfaces/services/IBookingService";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
 import { SUCCESS_MESSAGES } from "../constants/messages";
+import { BookingMapper } from "../mappers/booking.mapper";
 
 export class BookingController {
-  private readonly _bookingService: IBookingService;
+  private  _bookingService: IBookingService;
   constructor(bookingService: IBookingService) {
     this._bookingService = bookingService;
   }
@@ -30,7 +31,7 @@ export class BookingController {
       const userId = req.user!.id;
       const booking = await this._bookingService.createBooking(userId, req.body);
       res.status(HttpStatusCode.CREATED).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_CREATED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_CREATED)
       );
     } catch (error) {
       next(error);
@@ -41,7 +42,7 @@ export class BookingController {
     try {
       const bookings = await this._bookingService.getUserBookings(req.user!.id);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(bookings, SUCCESS_MESSAGES.BOOKINGS_FETCHED)
+        createSuccessResponse(BookingMapper.toArrayResponse(bookings, true), SUCCESS_MESSAGES.BOOKINGS_FETCHED)
       );
     } catch (error) {
       next(error);
@@ -52,7 +53,7 @@ export class BookingController {
     try {
       const bookings = await this._bookingService.getProviderBookings(req.user!.id);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(bookings, SUCCESS_MESSAGES.BOOKINGS_FETCHED)
+        createSuccessResponse(BookingMapper.toArrayResponse(bookings, true), SUCCESS_MESSAGES.BOOKINGS_FETCHED)
       );
     } catch (error) {
       next(error);
@@ -67,7 +68,7 @@ export class BookingController {
         req.user!.role
       );
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_DETAIL_FETCHED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_DETAIL_FETCHED)
       );
     } catch (error) {
       next(error);
@@ -78,7 +79,7 @@ export class BookingController {
     try {
       const booking = await this._bookingService.acceptBooking(req.params.id, req.user!.id);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_ACCEPTED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_ACCEPTED)
       );
     } catch (error) {
       next(error);
@@ -93,7 +94,7 @@ export class BookingController {
         "confirmed"
       );
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_CONFIRMED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_CONFIRMED)
       );
     } catch (error) {
       next(error);
@@ -108,7 +109,7 @@ export class BookingController {
         "completed"
       );
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_COMPLETED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_COMPLETED)
       );
     } catch (error) {
       next(error);
@@ -124,7 +125,7 @@ export class BookingController {
         req.body.reason
       );
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_CANCELLED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_CANCELLED)
       );
     } catch (error) {
       next(error);
@@ -139,7 +140,50 @@ export class BookingController {
         req.body
       );
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.BOOKING_RESCHEDULED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_RESCHEDULED)
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  providerRescheduleBooking = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const booking = await this._bookingService.providerRescheduleBooking(
+        req.params.id,
+        req.user!.id,
+        req.body
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_RESCHEDULED)
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  customerAcceptReschedule = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const booking = await this._bookingService.customerAcceptReschedule(
+        req.params.id,
+        req.user!.id
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Rescheduled time accepted")
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  customerRejectReschedule = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const booking = await this._bookingService.customerRejectReschedule(
+        req.params.id,
+        req.user!.id
+      );
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Rescheduled time rejected")
       );
     } catch (error) {
       next(error);
@@ -150,7 +194,7 @@ export class BookingController {
     try {
       const booking = await this._bookingService.generateArrivalOtp(req.params.id, req.user!.id);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.ARRIVAL_OTP_GENERATED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.ARRIVAL_OTP_GENERATED)
       );
     } catch (error) {
       next(error);
@@ -165,7 +209,7 @@ export class BookingController {
         req.body.otp
       );
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.ARRIVAL_OTP_VERIFIED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.ARRIVAL_OTP_VERIFIED)
       );
     } catch (error) {
       next(error);
@@ -180,7 +224,7 @@ export class BookingController {
         req.body.invoiceData
       );
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.COMPLETION_OTP_GENERATED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.COMPLETION_OTP_GENERATED)
       );
     } catch (error) {
       next(error);
@@ -195,7 +239,7 @@ export class BookingController {
         req.body.otp
       );
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(booking, SUCCESS_MESSAGES.COMPLETION_OTP_VERIFIED)
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.COMPLETION_OTP_VERIFIED)
       );
     } catch (error) {
       next(error);
