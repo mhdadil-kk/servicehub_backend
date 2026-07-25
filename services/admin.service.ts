@@ -1,27 +1,27 @@
 import { IUserRepository } from "../interfaces/repositories/IUserRepository";
 import { IUser } from "../types/user.types";
-import mongoose, { FilterQuery } from "mongoose";
+import mongoose from "mongoose";
 import { NotFoundError, BadRequestError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
-import { ServiceRepository } from "../repositories/service.repository";
-import { IService } from "../models/service.model";
-import ProviderProfile from "../models/providerProfile.model";
-import BookingModel from "../models/booking.model";
-import TransactionModel from "../models/transaction.model";
-import ReportModel from "../models/report.model";
-import { IAdminService, AdminDashboardStats } from "../interfaces/services/IAdminService";
+import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
+import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
+import { ITransactionRepository } from "../interfaces/repositories/ITransactionRepository";
+import { IReportRepository } from "../interfaces/repositories/IReportRepository";
+import { IServiceRepository } from "../interfaces/repositories/IServiceRepository";
+import { IAdminService } from "../interfaces/services/IAdminService";
 
 export class AdminService implements IAdminService {
-  private _userRepository: IUserRepository;
-  private _serviceRepository: ServiceRepository;
-
-  constructor(userRepository: IUserRepository) {
-    this._userRepository = userRepository;
-    this._serviceRepository = new ServiceRepository();
-  }
+  constructor(
+    private _userRepository: IUserRepository,
+    private _serviceRepository: IServiceRepository,
+    private _providerProfileRepository: IProviderProfileRepository,
+    private _bookingRepository: IBookingRepository,
+    private _transactionRepository: ITransactionRepository,
+    private _reportRepository: IReportRepository
+  ) {}
 
   async getAllUsers(search?: string, status?: string, sort?: string, page: number = 1, limit: number = 10): Promise<{ users: IUser[], total: number }> {
-    const filter: FilterQuery<IUser> = { role: "user" };
+    const filter: any = { role: "user" };
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -46,7 +46,7 @@ export class AdminService implements IAdminService {
   }
 
   async getProviders(search?: string, status?: string, sort?: string, page: number = 1, limit: number = 10): Promise<{ providers: IUser[], total: number }> {
-    const filter: FilterQuery<IUser> = { role: "provider" };
+    const filter: any = { role: "provider" };
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -104,7 +104,7 @@ export class AdminService implements IAdminService {
     await this._userRepository.softDelete(id);
   }
 
-  async addService(data: Partial<IService>): Promise<IService> {
+  async addService(data: any): Promise<any> {
     if (!data.name || !data.description) {
       throw new BadRequestError("Name and description are required");
     }
@@ -113,24 +113,26 @@ export class AdminService implements IAdminService {
     
     if (existingService) {
       if ((existingService as any).isDeleted) {
-        return await this._serviceRepository.update(existingService._id, {
+        return await this._serviceRepository.update(existingService._id.toString(), {
           description: data.description,
           isDeleted: false,
           isActive: true
-        }) as IService;
+        }) as any;
       }
       throw new BadRequestError("A service with this name already exists");
     }
 
     try {
-      return await this._serviceRepository.create(data as IService);
-    } catch (error: any) {
-
-      throw new BadRequestError(error.message || "Failed to create service category");
+      return await this._serviceRepository.create(data);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw new BadRequestError(error.message || "Failed to create service category");
+      }
+      throw new BadRequestError("Failed to create service category");
     }
   }
 
-  async getAllServices(): Promise<IService[]> {
+  async getAllServices(): Promise<any[]> {
     return await this._serviceRepository.findAll();
   }
 
@@ -141,41 +143,36 @@ export class AdminService implements IAdminService {
   }
 
   async getPendingProviders(): Promise<any[]> {
-    return await ProviderProfile.find({ onboardingStatus: "in_review" })
-      .populate("userId", "name email phone")
-      .populate("serviceId", "name");
+    return await this._providerProfileRepository.findPendingProviders();
   }
 
   async getProviderDetail(userId: string): Promise<any> {
-    const profile = await ProviderProfile.findOne({ userId })
-      .populate("userId", "name email phone role status")
-      .populate("serviceId", "name description");
-    
+    const profile = await this._providerProfileRepository.findByUserIdWithDetails(userId);
     if (!profile) throw new NotFoundError("Provider profile not found");
     return profile;
   }
 
   async verifyProvider(userId: string, status: "approved" | "rejected", remarks?: string): Promise<void> {
-    const profile = await ProviderProfile.findOne({ userId });
+    const profile = await this._providerProfileRepository.findByUserId(userId);
     if (!profile) throw new NotFoundError("Provider profile not found");
 
-    profile.onboardingStatus = status;
+    const updateData: any = { onboardingStatus: status };
     if (status === "rejected") {
-      profile.rejectionReason = remarks || "No reason provided";
+      updateData.rejectionReason = remarks || "No reason provided";
     } else {
-      profile.rejectionReason = undefined;
+      updateData.rejectionReason = undefined;
     }
     
-    await profile.save();
+    await this._providerProfileRepository.updateByUserId(userId, updateData);
 
     if (status === "approved") {
-      await this._userRepository.update(userId, { is_verified: true, status: "active" });
+      await this._userRepository.updateById(userId, { is_verified: true, status: "active" });
     } else {
-      await this._userRepository.update(userId, { status: "rejected" });
+      await this._userRepository.updateById(userId, { status: "rejected" });
     }
   }
 
-  async getDashboardStats(timeRange?: string): Promise<AdminDashboardStats> {
+  async getDashboardStats(timeRange?: string): Promise<any> {
     const now = new Date();
     let startDate = new Date(0); 
 
@@ -186,82 +183,66 @@ export class AdminService implements IAdminService {
     }
 
     const dateFilter = timeRange && timeRange !== "all" ? { createdAt: { $gte: startDate } } : {};
+    const userDateFilter = timeRange && timeRange !== "all" ? { created_at: { $gte: startDate } } : {};
 
     const [
       totalUsers,
       totalProviders,
       totalBookings,
-      revenueResult,
+      paidBookingsCount,
       pendingProviders,
       openReports,
       userGrowthData,
       bookingTrendsData
     ] = await Promise.all([
-      mongoose.model("User").countDocuments({ role: "user", isDeleted: { $ne: true }, ...dateFilter }),
-      mongoose.model("User").countDocuments({ role: "provider", isDeleted: { $ne: true }, ...dateFilter }),
-      BookingModel.countDocuments({ ...dateFilter }),
-      TransactionModel.aggregate([
-        { $match: { status: "success", type: "credit", ...dateFilter } },
-        { $group: { _id: null, total: { $sum: "$amount" } } },
-      ]),
-      ProviderProfile.countDocuments({ onboardingStatus: "in_review", ...dateFilter }),
-      ReportModel.countDocuments({ status: "pending", ...dateFilter }),
-      
-      mongoose.model("User").aggregate([
-        { $match: { role: "user", isDeleted: { $ne: true }, ...dateFilter } },
-        {
-          $group: {
-            _id: {
-              year: { $year: "$createdAt" },
-              month: { $month: "$createdAt" }
-            },
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { "_id.year": 1, "_id.month": 1 } }
-      ]),
-
-      BookingModel.aggregate([
-        { $match: { status: "completed", ...dateFilter } },
-        {
-          $lookup: {
-            from: "services",
-            localField: "serviceId",
-            foreignField: "_id",
-            as: "service"
-          }
-        },
-        { $unwind: "$service" },
-        {
-          $group: {
-            _id: "$service.name",
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { count: -1 } },
-        { $limit: 5 }
-      ])
+      this._userRepository.countByRole("user", userDateFilter),
+      this._userRepository.countByRole("provider", userDateFilter),
+      this._bookingRepository.countByFilter({ ...dateFilter }),
+      this._bookingRepository.countByFilter({
+        paymentStatus: { $in: ["paid", "fully_paid"] },
+        status: { $in: ["confirmed", "completed", "in_progress", "completed_pending_payment"] },
+        ...dateFilter
+      }),
+      this._providerProfileRepository.countByStatus("in_review", dateFilter),
+      this._reportRepository.count({ status: "pending", ...dateFilter }),
+      this._userRepository.getUserGrowth(userDateFilter, timeRange),
+      this._bookingRepository.getServiceBookingTrends(dateFilter)
     ]);
 
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    
-    const userGrowth = userGrowthData.map((d: any) => ({
-      month: `${monthNames[d._id.month - 1]} ${d._id.year}`,
-      value: d.count
-    }));
+    const PLATFORM_FEE = 100;
 
-    const colors = ["bg-blue-600", "bg-blue-500", "bg-blue-400", "bg-blue-300", "bg-blue-200"];
-    const bookingTrends = bookingTrendsData.map((d: any, i: number) => ({
+    const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    const growthMap = new Map<string, { label: string; users: number; providers: number }>();
+    userGrowthData.forEach((d: any) => {
+      let label = `${d._id.year}`;
+      if (timeRange === "year") {
+        label = `${MONTH_NAMES[d._id.month - 1]} ${d._id.year}`;
+      } else if (timeRange === "month") {
+        label = `${d._id.day}`;
+      }
+      if (!growthMap.has(label)) {
+        growthMap.set(label, { label, users: 0, providers: 0 });
+      }
+      const entry = growthMap.get(label)!;
+      if (d._id.role === "user") entry.users = d.count;
+      else if (d._id.role === "provider") entry.providers = d.count;
+    });
+
+    const userGrowth = Array.from(growthMap.values());
+
+    const COLORS = ["bg-blue-500", "bg-emerald-500", "bg-violet-500", "bg-orange-500", "bg-pink-500"];
+    const bookingTrends = bookingTrendsData.map((d: { _id: string, count: number }, i: number) => ({
       label: d._id,
       val: d.count,
-      color: colors[i % colors.length]
+      color: COLORS[i % COLORS.length]
     }));
 
     return {
       totalUsers,
       totalProviders,
       totalBookings,
-      totalRevenue: revenueResult.length > 0 ? revenueResult[0].total : 0,
+      totalRevenue: paidBookingsCount * PLATFORM_FEE,
       pendingProviders,
       openReports,
       userGrowth,
@@ -269,20 +250,19 @@ export class AdminService implements IAdminService {
     };
   }
 
-  async getAllBookings(search?: string, status?: string, sort?: string, page = 1, limit = 10): Promise<{ bookings: any[], total: number }> {
+  async getAllBookings(search?: string, status?: string, sort?: string, page: number = 1, limit: number = 10): Promise<{ bookings: any[], total: number }> {
     const skip = (page - 1) * limit;
-    const query: FilterQuery<any> = {};
+    const query: any = {};
 
     if (status) {
       query.status = status;
     }
 
     if (search) {
-      const users = await this._userRepository.find({ name: { $regex: search, $options: "i" } } as any);
-      const userIds = users.map(u => u._id);
-      
-      const providers = await ProviderProfile.find({ userId: { $in: userIds } });
-      const providerProfileIds = providers.map(p => p._id);
+      const userIds = await this._userRepository.findIdsByRoleAndName("user", search);
+      const providerProfileIds = await this._providerProfileRepository.findIdsByUserIds(
+        await this._userRepository.findIdsByRoleAndName("provider", search)
+      );
 
       query.$or = [
         { userId: { $in: userIds } },
@@ -297,41 +277,63 @@ export class AdminService implements IAdminService {
     if (sort === "amount_low") sortQuery = { totalAmount: 1 };
 
     const [bookings, total] = await Promise.all([
-      BookingModel.find(query)
-        .populate("userId", "name email phone profilePhoto")
-        .populate({
-          path: "providerId",
-          populate: {
-            path: "userId",
-            select: "name email phone profilePhoto"
-          }
-        })
-        .populate("serviceId", "name")
-        .sort(sortQuery)
-        .skip(skip)
-        .limit(limit)
-        .exec(),
-      BookingModel.countDocuments(query).exec(),
+      this._bookingRepository.findAllWithFilters(query, sortQuery, skip, limit),
+      this._bookingRepository.countByFilter(query),
     ]);
 
     return { bookings, total };
   }
 
   async getBookingById(id: string): Promise<any> {
-    const booking = await BookingModel.findById(id)
-      .populate("userId", "name email phone profilePhoto")
-      .populate({
-        path: "providerId",
-        populate: {
-          path: "userId",
-          select: "name email phone profilePhoto"
-        }
-      })
-      .populate("serviceId", "name description basePrice")
-      .populate("addressId")
-      .exec();
-
-    if (!booking) throw new NotFoundError("Booking not found");
+    const booking = await this._bookingRepository.findByIdPopulated(id);
+     if (!booking) throw new NotFoundError("Booking not found");
     return booking;
+  }
+
+  async getRevenueReport(timeRange?: string): Promise<{
+    totalRevenue: number;
+    revenueByMonth: { month: string; year: number; revenue: number }[];
+    totalBookings: number;
+    completedBookings: number;
+    platformFeeCollected: number;
+  }> {
+    const now = new Date();
+    let startDate = new Date(0);
+
+    if (timeRange === "month") {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (timeRange === "year") {
+      startDate = new Date(now.getFullYear(), 0, 1);
+    }
+
+    const dateFilter = timeRange && timeRange !== "all" ? { createdAt: { $gte: startDate } } : {};
+    const PLATFORM_FEE = 100;
+
+    const [paidBookingsCount, revenueByMonthRaw, totalBookings, completedBookings] = await Promise.all([
+      this._bookingRepository.countByFilter({
+        paymentStatus: { $in: ["paid", "fully_paid"] },
+        status: { $in: ["confirmed", "completed", "in_progress", "completed_pending_payment"] },
+        ...dateFilter
+      }),
+      this._bookingRepository.getPlatformRevenueByMonth(dateFilter),
+      this._bookingRepository.countByFilter({ ...dateFilter }),
+      this._bookingRepository.countByFilter({ status: "completed", ...dateFilter }),
+    ]);
+
+    const revenueByMonth = revenueByMonthRaw.map((r) => ({
+      month: r.month,
+      year: r.year,
+      revenue: r.count * PLATFORM_FEE,
+    }));
+
+    const totalRevenue = paidBookingsCount * PLATFORM_FEE;
+
+    return {
+      totalRevenue,
+      revenueByMonth,
+      totalBookings,
+      completedBookings,
+      platformFeeCollected: totalRevenue,
+    };
   }
 }

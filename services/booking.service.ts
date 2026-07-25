@@ -13,6 +13,8 @@ import { ERROR_MESSAGES } from "../constants/messages";
 import { ACTIVE_SLOT_BOOKING_STATUSES } from "../constants/statuses";
 import { logger } from "../utils/logger";
 import { IBookingService, CreateBookingInput } from "../interfaces/services/IBookingService";
+import { IWalletService } from "../interfaces/services/IWalletService";
+import { PLATFORM_BOOKING_FEE } from "../constants/payment.constants";
 
 export class BookingService implements IBookingService {
     private _bookingRepository: IBookingRepository;
@@ -22,6 +24,7 @@ export class BookingService implements IBookingService {
   private _messageRepository: IMessageRepository;
   private _notificationService: INotificationService;
   private _mailer: IMailer;
+  private _walletService: IWalletService;
   constructor(
     bookingRepository: IBookingRepository,
     providerProfileRepository: IProviderProfileRepository,
@@ -29,7 +32,8 @@ export class BookingService implements IBookingService {
     conversationRepository: IConversationRepository,
     messageRepository: IMessageRepository,
     notificationService: INotificationService,
-    mailer: IMailer
+    mailer: IMailer,
+    walletService: IWalletService
   ) {
     this._bookingRepository = bookingRepository;
     this._providerProfileRepository = providerProfileRepository;
@@ -38,6 +42,7 @@ export class BookingService implements IBookingService {
     this._messageRepository = messageRepository;
     this._notificationService = notificationService;
     this._mailer = mailer;
+    this._walletService = walletService;
 }
 
   async getAvailableSlots(providerProfileId: string, dateStr: string): Promise<AvailableSlot[]> {
@@ -235,7 +240,7 @@ export class BookingService implements IBookingService {
   }
 
   async cancelBooking(bookingId: string, userId: string, role: string, reason: string): Promise<IBooking> {
-    let booking: IBooking | null = null;
+    let booking: IBooking | null;
 
     if (role === "user") {
       booking = await this._bookingRepository.findOneForUser(bookingId, userId);
@@ -260,6 +265,23 @@ export class BookingService implements IBookingService {
       cancellationReason: reason || "No reason provided",
     });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+
+    if (booking.status === "confirmed" || booking.status === "awaiting_user_confirmation") {
+      await this._walletService.credit(
+        booking.userId.toString(),
+        PLATFORM_BOOKING_FEE,
+        `Refund for cancelled booking`,
+        bookingId
+      );
+      
+      await this._notificationService.create({
+        userId: booking.userId.toString(),
+        title: "Refund Processed",
+        message: `₹${PLATFORM_BOOKING_FEE} has been refunded to your wallet for the cancelled booking.`,
+        type: "success",
+        relatedId: bookingId,
+      });
+    }
 
     if (role === "user") {
       const provProfile = await this._providerProfileRepository.findById(booking.providerId.toString());
@@ -302,7 +324,7 @@ export class BookingService implements IBookingService {
     }
 
     await this._bookingRepository.updateStatus(bookingId, {
-      status: "cancelled",
+      status: "rescheduled",
       cancelledBy: "user",
       cancellationReason: "Rescheduled by customer",
     });
@@ -337,7 +359,7 @@ export class BookingService implements IBookingService {
     }
 
     await this._bookingRepository.updateStatus(bookingId, {
-      status: "cancelled",
+      status: "rescheduled",
       cancelledBy: "provider",
       cancellationReason: "Rescheduled by provider",
     });
@@ -375,13 +397,17 @@ export class BookingService implements IBookingService {
   async customerAcceptReschedule(bookingId: string, userId: string): Promise<IBooking> {
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
-    if ((booking.userId as any)._id.toString() !== userId) throw new BadRequestError("Unauthorized");
+    
+    const customer = booking.userId as unknown as { _id: mongoose.Types.ObjectId };
+    if (customer._id.toString() !== userId) throw new BadRequestError("Unauthorized");
+    
     if (booking.status !== "awaiting_user_confirmation") throw new BadRequestError("Booking is not awaiting confirmation");
 
     const updated = await this._bookingRepository.updateStatus(bookingId, { status: "confirmed" });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    const provProfile = await this._providerProfileRepository.findById((booking.providerId as any)._id.toString());
+    const providerObj = booking.providerId as unknown as { _id: mongoose.Types.ObjectId };
+    const provProfile = await this._providerProfileRepository.findById(providerObj._id.toString());
     if (provProfile) {
       await this._notificationService.create({
         userId: provProfile.userId.toString(),
@@ -398,7 +424,10 @@ export class BookingService implements IBookingService {
   async customerRejectReschedule(bookingId: string, userId: string): Promise<IBooking> {
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
-    if ((booking.userId as any)._id.toString() !== userId) throw new BadRequestError("Unauthorized");
+    
+    const customer = booking.userId as unknown as { _id: mongoose.Types.ObjectId };
+    if (customer._id.toString() !== userId) throw new BadRequestError("Unauthorized");
+    
     if (booking.status !== "awaiting_user_confirmation") throw new BadRequestError("Booking is not awaiting confirmation");
 
     const updated = await this._bookingRepository.updateStatus(bookingId, { 
@@ -408,7 +437,8 @@ export class BookingService implements IBookingService {
     });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    const provProfile = await this._providerProfileRepository.findById((booking.providerId as any)._id.toString());
+    const providerObj = booking.providerId as unknown as { _id: mongoose.Types.ObjectId };
+    const provProfile = await this._providerProfileRepository.findById(providerObj._id.toString());
     if (provProfile) {
       await this._notificationService.create({
         userId: provProfile.userId.toString(),
@@ -565,9 +595,10 @@ export class BookingService implements IBookingService {
     return profile;
   }
 
-  private assertProviderOwnsBooking(booking: any, profile: IProviderProfile): void {
-    const bookingProviderId = booking.providerId && booking.providerId._id 
-      ? booking.providerId._id.toString() 
+  private assertProviderOwnsBooking(booking: IBooking, profile: IProviderProfile): void {
+    const providerIdObj = booking.providerId as unknown as { _id?: mongoose.Types.ObjectId };
+    const bookingProviderId = providerIdObj && providerIdObj._id 
+      ? providerIdObj._id.toString() 
       : booking.providerId?.toString();
       
     if (bookingProviderId !== profile._id.toString()) {

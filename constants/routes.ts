@@ -30,6 +30,7 @@ export const ROUTES = {
     REPORT_BY_ID: "/reports/:id",
     BOOKINGS: "/bookings",
     BOOKING_BY_ID: "/bookings/:id",
+    REVENUE: "/revenue",
   },
   NOTIFICATIONS: {
     BASE: `${API_PREFIX}/notifications`,
@@ -57,6 +58,7 @@ export const ROUTES = {
     CREATE_CHECKOUT: "/create-checkout-session",
     VERIFY: "/verify-payment",
     WEBHOOK: "/webhook",
+    WALLET_PAY: "/wallet-pay",
   },
   PROVIDER: {
     BASE: `${API_PREFIX}/provider`,

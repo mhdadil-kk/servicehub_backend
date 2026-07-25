@@ -47,9 +47,9 @@ export class PaymentService implements IPaymentService {
       throw new BadRequestError(ERROR_MESSAGES.BOOKING_ALREADY_COMPLETED);
     }
 
-    let amount = 0;
-    let description = "";
-    let paymentStage = "";
+    let amount: number;
+    let description: string;
+    let paymentStage: string;
 
     if (booking.status === "completed_pending_payment") {
       amount = booking.totalAmount || 1000;
@@ -228,6 +228,66 @@ export class PaymentService implements IPaymentService {
       booking.status === "completed_pending_payment"
     ) {
       await this.processFinalPayment(booking);
+    }
+  }
+
+  async payWithWallet(userId: string, bookingId: string): Promise<void> {
+    const booking = await this._bookingRepository.findByIdWithProviderUser(bookingId);
+    if (!booking) throw new NotFoundError("Booking not found");
+    if (booking.userId.toString() !== userId) throw new ForbiddenError("Unauthorized booking access");
+
+    let amount: number;
+    if (booking.status === "awaiting_payment") {
+        amount = PLATFORM_BOOKING_FEE;
+    } else if (booking.status === "completed_pending_payment") {
+        amount = booking.totalAmount || 0;
+    } else {
+        throw new BadRequestError("Payment not required for this booking status");
+    }
+
+    const wallet = await this._walletService.getWallet(userId);
+    if (wallet.balance < amount) {
+        throw new BadRequestError("Insufficient wallet balance");
+    }
+
+    await this._walletService.debit(userId, amount, `Wallet Payment for booking`, bookingId);
+
+    if (booking.status === "awaiting_payment") {
+        await this._bookingRepository.confirmBookingFeePaid(booking._id.toString());
+        await this._notificationService.create({
+            userId: booking.userId.toString(),
+            title: "Booking Confirmed!",
+            message: `Your ₹${amount} platform fee was paid via wallet. Booking is now confirmed.`,
+            type: "success",
+            relatedId: booking._id.toString(),
+        });
+    } else {
+        await this._bookingRepository.confirmFinalPaymentPaid(booking._id.toString());
+        const provider = booking.providerId as mongoose.Types.ObjectId & { userId?: { _id?: mongoose.Types.ObjectId, toString: () => string }, toString: () => string };
+        const providerUserId = provider?.userId?._id?.toString() || provider?.userId?.toString();
+        
+        if (providerUserId) {
+            await this._walletService.credit(
+                providerUserId,
+                amount,
+                "Earnings from Completed Service",
+                booking._id.toString()
+            );
+            await this._notificationService.create({
+                userId: providerUserId,
+                title: "Payment Received!",
+                message: `Customer paid ₹${amount} via Wallet for the completed service. Funds added to your wallet.`,
+                type: "success",
+                relatedId: booking._id.toString(),
+            });
+        }
+        await this._notificationService.create({
+            userId: booking.userId.toString(),
+            title: "Payment Complete - Thank You!",
+            message: `Your final payment of ₹${amount} was paid via wallet. Booking fully completed!`,
+            type: "success",
+            relatedId: booking._id.toString(),
+        });
     }
   }
 }

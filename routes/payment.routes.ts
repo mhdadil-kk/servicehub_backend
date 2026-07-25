@@ -48,4 +48,10 @@ router.post(
   paymentController.verifyAndFinalizePayment
 );
 
+router.post(
+  ROUTES.PAYMENTS.WALLET_PAY,
+  authMiddleware,
+  paymentController.payWithWallet
+);
+
 export default router;

@@ -119,6 +119,8 @@ export const SUCCESS_MESSAGES = {
   BOOKING_COMPLETED: "Booking completed successfully.",
   BOOKING_CANCELLED: "Booking cancelled successfully.",
   BOOKING_RESCHEDULED: "Booking rescheduled successfully.",
+  RESCHEDULE_ACCEPTED: "Rescheduled time accepted.",
+  RESCHEDULE_REJECTED: "Rescheduled time rejected.",
   ARRIVAL_OTP_GENERATED: "Arrival OTP generated successfully.",
   ARRIVAL_OTP_VERIFIED: "Arrival OTP verified successfully. Job in progress.",
   COMPLETION_OTP_GENERATED: "Completion OTP generated successfully. Final Invoice saved.",

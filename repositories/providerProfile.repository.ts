@@ -2,7 +2,7 @@ import providerProfileModel from "../models/providerProfile.model";
 import { IProviderProfile } from "../types/providerProfile.types";
 import { BaseRepository } from "./base.repository";
 import { FilterQuery } from "mongoose";
-import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
+import { FindApprovedProvidersOptions, IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
 
 export class ProviderProfileRepository
   extends BaseRepository<IProviderProfile>
@@ -84,5 +84,74 @@ export class ProviderProfileRepository
 
   async updateById(id: string, data: Partial<IProviderProfile>): Promise<IProviderProfile | null> {
     return this.update(id, data);
+  }
+
+  async findApprovedProviders(options: FindApprovedProvidersOptions): Promise<{ providers: IProviderProfile[]; total: number }> {
+    const { serviceId, latitude, longitude, radius, limit, skip, sortBy, sortOrder, userIds, serviceIds } = options;
+    const query: FilterQuery<IProviderProfile> = { onboardingStatus: "approved" };
+
+    if (serviceId) {
+      query.serviceId = serviceId;
+    }
+
+    if (userIds || serviceIds) {
+      query.$or = [];
+      if (userIds && userIds.length > 0) {
+        query.$or.push({ userId: { $in: userIds } });
+      }
+      if (serviceIds && serviceIds.length > 0) {
+        query.$or.push({ serviceId: { $in: serviceIds } });
+      }
+      if (query.$or.length === 0) {
+        return { providers: [], total: 0 };
+      }
+    }
+
+    if (latitude && longitude && radius) {
+      query.location = {
+        $geoWithin: {
+          $centerSphere: [
+            [longitude, latitude],
+            radius / 6378.1
+          ]
+        }
+      };
+    }
+
+    const sortParams: Record<string, 1 | -1> = {};
+    if (sortBy === "hourlyRate") {
+      sortParams.hourlyRate = sortOrder;
+    } else {
+      sortParams[sortBy] = sortOrder;
+    }
+
+    const [providers, total] = await Promise.all([
+      this.model.find(query)
+        .populate("userId", "name email phone role status profilePhoto")
+        .populate("serviceId", "name description")
+        .sort(sortParams)
+        .limit(limit)
+        .skip(skip)
+        .exec(),
+      this.model.countDocuments(query)
+    ]);
+
+    return { providers, total };
+  }
+
+  async findPendingProviders(dateFilter: any = {}): Promise<IProviderProfile[]> {
+    return this.model.find({ onboardingStatus: "in_review", ...dateFilter })
+      .populate("userId", "name email phone")
+      .populate("serviceId", "name")
+      .exec();
+  }
+
+  async countByStatus(status: string, dateFilter: any = {}): Promise<number> {
+    return this.model.countDocuments({ onboardingStatus: status, ...dateFilter }).exec();
+  }
+
+  async findIdsByUserIds(userIds: string[]): Promise<string[]> {
+    const profiles = await this.model.find({ userId: { $in: userIds } }).select("_id").exec();
+    return profiles.map((p: any) => p._id.toString());
   }
 }

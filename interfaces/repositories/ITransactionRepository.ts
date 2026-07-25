@@ -12,4 +12,6 @@ export interface ITransactionRepository {
         status?: "pending" | "success" | "failed";
     }): Promise<ITransaction>;
     findByWalletId(walletId: string): Promise<ITransaction[]>;
+    getTotalRevenue(dateFilter?: any): Promise<number>;
+    getRevenueByMonth(dateFilter?: any): Promise<{ month: string; year: number; revenue: number }[]>;
 }

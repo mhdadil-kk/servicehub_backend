@@ -74,7 +74,7 @@ export class AuthController {
       const { email, token, newPassword } = req.body;
       await this._authService.resetPassword(email, token, newPassword);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(null, "Password reset successfully.")
+        createSuccessResponse(null, SUCCESS_MESSAGES.PASSWORD_RESET_SUCCESS)
       );
     } catch (error) { next(error); }
   };
@@ -99,7 +99,7 @@ export class AuthController {
       
       const { accessToken } = await this._authService.refreshToken(refreshToken);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse({ accessToken }, "Token refreshed successfully")
+        createSuccessResponse({ accessToken }, SUCCESS_MESSAGES.TOKEN_REFRESHED)
       );
     } catch (error) { next(error); }
   };
@@ -110,7 +110,7 @@ export class AuthController {
       const { oldPassword, newPassword } = req.body;
       await this._authService.changePassword(userId, oldPassword, newPassword);
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(null, "Password changed successfully")
+        createSuccessResponse(null, SUCCESS_MESSAGES.PASSWORD_CHANGED)
       );
     } catch (error) { next(error); }
   };
@@ -121,7 +121,7 @@ export class AuthController {
       const { name, phone } = req.body;
       const { user } = await this._authService.updateProfile(userId, { name, phone });
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse({ user: UserMapper.toResponse(user) }, "Profile updated successfully")
+        createSuccessResponse({ user: UserMapper.toResponse(user) }, SUCCESS_MESSAGES.PROFILE_UPDATED)
       );
     } catch (error) { next(error); }
   };

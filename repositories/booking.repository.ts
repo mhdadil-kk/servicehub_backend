@@ -26,7 +26,7 @@ export class BookingRepository
     const filter: FilterQuery<IBooking> = { providerId };
     if (statuses?.length) filter.status = { $in: statuses };
     return this.count(filter);
-  }
+  }  
 
   async findRecentByUserId(userId: string, limit = 5): Promise<IBooking[]> {
     return this.model
@@ -166,5 +166,93 @@ export class BookingRepository
 
   async updateStatus(bookingId: string, data: Partial<IBooking>): Promise<IBooking | null> {
     return this.model.findByIdAndUpdate(bookingId, { $set: data }, { new: true }).exec();
+  }
+
+  async findAllWithFilters(query: any, sort: any, skip: number, limit: number): Promise<IBooking[]> {
+    return this.model.find(query)
+      .populate("userId", "name email phone profilePhoto")
+      .populate({
+        path: "providerId",
+        populate: {
+          path: "userId",
+          select: "name email phone profilePhoto"
+        }
+      })
+      .populate("serviceId", "name")
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .exec();
+  }
+
+  async countByFilter(query: any): Promise<number> {
+    return this.model.countDocuments(query).exec();
+  }
+
+  async getServiceBookingTrends(dateFilter: any = {}): Promise<any[]> {
+    return this.model.aggregate([
+      { $match: { status: "completed", ...dateFilter } },
+      {
+        $lookup: {
+          from: "services",
+          localField: "serviceId",
+          foreignField: "_id",
+          as: "service"
+        }
+      },
+      { $unwind: "$service" },
+      {
+        $group: {
+          _id: "$service.name",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]);
+  }
+
+  async findByIdPopulated(id: string): Promise<any> {
+    return this.model.findById(id)
+      .populate("userId", "name email phone profilePhoto")
+      .populate({
+        path: "providerId",
+        populate: {
+          path: "userId",
+          select: "name email phone profilePhoto"
+        }
+      })
+      .populate("serviceId", "name description basePrice")
+      .populate("addressId")
+      .exec();
+  }
+
+
+  async getPlatformRevenueByMonth(dateFilter: any = {}): Promise<{ month: string; year: number; count: number }[]> {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const result = await this.model.aggregate([
+      {
+        $match: {
+          paymentStatus: { $in: ["paid", "fully_paid"] },
+          status: { $in: ["confirmed", "completed", "in_progress", "completed_pending_payment"] },
+          ...dateFilter
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]);
+    return result.map((r) => ({
+      month: monthNames[r._id.month - 1],
+      year: r._id.year,
+      count: r.count,
+    }));
   }
 }

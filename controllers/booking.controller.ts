@@ -169,7 +169,7 @@ export class BookingController {
         req.user!.id
       );
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Rescheduled time accepted")
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.RESCHEDULE_ACCEPTED)
       );
     } catch (error) {
       next(error);
@@ -183,7 +183,7 @@ export class BookingController {
         req.user!.id
       );
       res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Rescheduled time rejected")
+        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.RESCHEDULE_REJECTED)
       );
     } catch (error) {
       next(error);

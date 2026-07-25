@@ -4,7 +4,7 @@ import { IProviderProfileRepository } from "../interfaces/repositories/IProvider
 import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
 import { IMessage } from "../types/chat.types";
 import { IConversation } from "../models/conversation.model";
-import { NotFoundError, BadRequestError, ForbiddenError } from "../utils/error";
+import { NotFoundError, ForbiddenError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
 import { IChatService, ConversationListItem } from "../interfaces/services/IChatService";
 
@@ -57,7 +57,7 @@ export class ChatService implements IChatService {
         ? new Date(a.lastMessage.createdAt).getTime()
         : new Date(a.updatedAt).getTime();
       const timeB = b.lastMessage
-        ? new Date(b.lastMessage.createdAt).getTime()
+        ? new Date(b.lastMessage.createdAt).getTime() 
         : new Date(b.updatedAt).getTime();
       return timeB - timeA;
     });
@@ -174,15 +174,14 @@ export class ChatService implements IChatService {
   }
 
   private async resolveProviderInfo(
-    participants: { role: string; _id?: any; id?: any }[]
+    participants: { role: string; _id?: unknown; id?: unknown }[]
   ): Promise<{ serviceName: string; profilePhoto?: string }> {
     try {
       const providerParticipant = participants.find((p) => p.role === "provider");
       if (!providerParticipant) return { serviceName: "Service Provider" };
 
-      const profile = await this._providerProfileRepository.findByUserIdWithDetails(
-        providerParticipant._id.toString()
-      );
+      const providerIdStr = providerParticipant._id ? String(providerParticipant._id) : String(providerParticipant.id);
+      const profile = await this._providerProfileRepository.findByUserIdWithDetails(providerIdStr);
 
       return {
         serviceName: (profile as unknown as { serviceId?: { name: string } })?.serviceId?.name || "Service Provider",
@@ -195,7 +194,7 @@ export class ChatService implements IChatService {
 
   private async enrichConversation(conversation: IConversation, _userId: string) {
     const obj = conversation.toObject();
-    const providerInfo = await this.resolveProviderInfo(obj.participants as unknown as { role: string; _id?: any; id?: any }[]);
+    const providerInfo = await this.resolveProviderInfo(obj.participants as unknown as { role: string; _id?: unknown; id?: unknown }[]);
     const pIndex = obj.participants.findIndex((p: { role: string }) => p.role === "provider");
     if (pIndex >= 0 && providerInfo.profilePhoto) {
       obj.participants[pIndex].profilePhoto = providerInfo.profilePhoto;

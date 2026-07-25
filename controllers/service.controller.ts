@@ -1,26 +1,20 @@
 import { Request, Response, NextFunction } from "express";
-import { ServiceRepository } from "../repositories/service.repository";
-import { IServiceRepository } from "../interfaces/repositories/IServiceRepository";
+import { IServiceService } from "../interfaces/services/IServiceService";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
 import { ServiceMapper } from "../mappers/service.mapper";
 import { ProviderProfileMapper } from "../mappers/providerProfile.mapper";
-import ProviderProfile from "../models/providerProfile.model";
-import User from "../models/user.model";
-import Service from "../models/service.model";
-import { FilterQuery } from "mongoose";
-import { IProviderProfile } from "../types/providerProfile.types";
 
 export class ServiceController {
-  private _serviceRepository: IServiceRepository;
+  private _serviceService: IServiceService;
 
-  constructor() {
-    this._serviceRepository = new ServiceRepository();
+  constructor(serviceService: IServiceService) {
+    this._serviceService = serviceService;
   }
 
   getActiveServices = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const services = await this._serviceRepository.findActive();
+      const services = await this._serviceService.getActiveService();
       res.status(HttpStatusCode.OK).json(createSuccessResponse(ServiceMapper.toArrayResponse(services)));
     } catch (error) {
       next(error);
@@ -29,75 +23,27 @@ export class ServiceController {
 
   getApprovedProviders = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { search, serviceId, latitude, longitude, radius } = req.query;
+      const { search, serviceId, latitude, longitude, radius, limit, page, sortBy, sortOrder } = req.query;
 
-      const query: FilterQuery<IProviderProfile> = { onboardingStatus: "approved" };
+      const result = await this._serviceService.getApprovedProviders({
+        search: search as string,
+        serviceId: serviceId as string,
+        latitude: latitude ? Number(latitude) : undefined,
+        longitude: longitude ? Number(longitude) : undefined,
+        radius: radius ? Number(radius) : undefined,
+        limit: Number(limit) || 10,
+        page: Number(page) || 1,
+        sortBy: sortBy as string,
+        sortOrder: sortOrder as string,
+      });
 
-      if (serviceId) {
-        query.serviceId = serviceId;
-      }
-
-      if (search) {
-        const matchingUsers = await User.find({
-          role: "provider",
-          name: { $regex: search as string, $options: "i" }
-        }).select("_id");
-        
-        const userIds = matchingUsers.map(u => u._id);
-
-        const matchingServices = await Service.find({
-          name: { $regex: search as string, $options: "i" }
-        }).select("_id");
-        
-        const serviceIds = matchingServices.map(s => s._id);
-
-        query.$or = [
-          { userId: { $in: userIds } },
-          { serviceId: { $in: serviceIds } }
-        ];
-      }
-
-      if (latitude && longitude && radius) {
-  query.location = {
-    $geoWithin: {
-      $centerSphere: [
-        [Number(longitude), Number(latitude)],
-        Number(radius) / 6378.1 
-      ]
-    }
-  };
-}
-
-    
-    const limit = Number(req.query.limit) || 10;
-    const page = Number(req.query.page) || 1;
-    const skip = (page - 1) * limit;
-
-    
-    const sortBy = (req.query.sortBy as string) || "createdAt";
-    const sortOrder = (req.query.sortOrder as string) === "asc" ? 1 : -1;
-    const sortParams: Record<string, 1 | -1> = {};
-    if (sortBy === "hourlyRate") {
-      sortParams.hourlyRate = sortOrder;
-    } else {
-      sortParams[sortBy] = sortOrder;
-    }
- 
-    const [providers, total] = await Promise.all([
-      ProviderProfile.find(query)
-        .populate("userId", "name email phone role status profilePhoto")
-        .populate("serviceId", "name description")
-        .sort(sortParams)
-        .limit(limit)
-        .skip(skip)
-        .exec(),
-      ProviderProfile.countDocuments(query)
-    ]);
-
-    const totalPages = Math.ceil(total / limit) || 1;
-    const mappedProviders = ProviderProfileMapper.toArrayResponse(providers, true);
-    res.status(HttpStatusCode.OK).json(createSuccessResponse({ providers: mappedProviders, total, totalPages, page, limit }));
-
+      res.status(HttpStatusCode.OK).json(createSuccessResponse({
+        providers: ProviderProfileMapper.toArrayResponse(result.providers, true),
+        total: result.total,
+        totalPages: result.totalPages,
+        page: result.page,
+        limit: result.limit
+      }));
     } catch (error) {
       next(error);
     }

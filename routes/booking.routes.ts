@@ -8,6 +8,9 @@ import { ConversationRepository } from "../repositories/conversation.repository"
 import { MessageRepository } from "../repositories/message.repository";
 import { NotificationRepository } from "../repositories/notification.repository";
 import { NotificationService } from "../services/notification.service";
+import { WalletService } from "../services/wallet.service";
+import { WalletRepository } from "../repositories/wallet.repository";
+import { TransactionRepository } from "../repositories/transaction.repository";
 import { Mailer } from "../utils/mailer";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { roleMiddleware } from "../middlewares/role.middleware";
@@ -30,8 +33,11 @@ const providerAvailabilityRepository = new ProviderAvailabilityRepository();
 const conversationRepository = new ConversationRepository();
 const messageRepository = new MessageRepository();
 const notificationRepository = new NotificationRepository();
+const walletRepository = new WalletRepository();
+const transactionRepository = new TransactionRepository();
 
 const notificationService = new NotificationService(notificationRepository);
+const walletService = new WalletService(walletRepository, transactionRepository);
 const mailer = new Mailer();
 const bookingService = new BookingService(
     bookingRepository,
@@ -40,7 +46,8 @@ const bookingService = new BookingService(
     conversationRepository,
     messageRepository,
     notificationService,
-    mailer
+    mailer,
+    walletService
 );
 const bookingController = new BookingController(bookingService);
 

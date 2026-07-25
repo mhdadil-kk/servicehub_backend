@@ -61,4 +61,34 @@ export class TransactionRepository
             .exec();
     }
 
+    async getTotalRevenue(dateFilter: any = {}): Promise<number> {
+    
+        const result = await this.model.aggregate([
+            { $match: { status: "success", type: "credit", ...dateFilter } },
+            { $group: { _id: null, total: { $sum: "$amount" } } },
+        ]);
+        return result.length > 0 ? result[0].total : 0;
+    }
+
+    async getRevenueByMonth(dateFilter: any = {}): Promise<{ month: string; year: number; revenue: number }[]> {
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const result = await this.model.aggregate([
+            { $match: { status: "success", type: "credit", ...dateFilter } },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: "$createdAt" },
+                        month: { $month: "$createdAt" },
+                    },
+                    revenue: { $sum: "$amount" },
+                },
+            },
+            { $sort: { "_id.year": 1, "_id.month": 1 } },
+        ]);
+        return result.map((r) => ({
+            month: monthNames[r._id.month - 1],
+            year: r._id.year,
+            revenue: r.revenue,
+        }));
+    }
 }

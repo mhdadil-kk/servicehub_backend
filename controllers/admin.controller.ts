@@ -4,6 +4,7 @@ import { createSuccessResponse } from "../types/response";
 import { UserMapper } from "../mappers/user.mapper";
 import { ServiceMapper } from "../mappers/service.mapper";
 import { ProviderProfileMapper } from "../mappers/providerProfile.mapper";
+import { BookingMapper } from "../mappers/booking.mapper";
 import { HttpStatusCode } from "../types/http";
 import { SUCCESS_MESSAGES } from "../constants/messages";
 
@@ -160,7 +161,7 @@ export class AdminController {
       
       const { bookings, total } = await this._adminService.getAllBookings(search, status, sort, page, limit);
       res.status(HttpStatusCode.OK).json(createSuccessResponse({
-        bookings,
+        bookings: BookingMapper.toArrayResponse(bookings, true),
         total,
         page,
         limit
@@ -173,7 +174,17 @@ export class AdminController {
   getBookingById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const booking = await this._adminService.getBookingById(req.params.id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(booking));
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking)));
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+
+  getRevenueReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const timeRange = req.query.timeRange as string | undefined;
+      const report = await this._adminService.getRevenueReport(timeRange);
+      res.status(HttpStatusCode.OK).json(createSuccessResponse(report));
     } catch (error: unknown) {
       next(error);
     }

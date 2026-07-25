@@ -48,4 +48,19 @@ export class PaymentController {
       next(error);
     }
   };
+
+  payWithWallet = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.id;
+      const { bookingId } = req.body;
+      
+      await this._paymentService.payWithWallet(userId, bookingId);
+
+      res.status(HttpStatusCode.OK).json(
+        createSuccessResponse(null, "Wallet payment processed successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
 }

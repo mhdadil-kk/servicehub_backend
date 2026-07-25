@@ -2,6 +2,11 @@ import express from "express";
 import { AdminController } from "../controllers/admin.controller";
 import { AdminService } from "../services/admin.service";
 import { AuthRepository } from "../repositories/auth.repository";
+import { ServiceRepository } from "../repositories/service.repository";
+import { ProviderProfileRepository } from "../repositories/providerProfile.repository";
+import { BookingRepository } from "../repositories/booking.repository";
+import { TransactionRepository } from "../repositories/transaction.repository";
+import { ReportRepository } from "../repositories/report.repository";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { roleMiddleware } from "../middlewares/role.middleware";
 
@@ -12,7 +17,20 @@ import { ROUTES } from "../constants/routes";
 const router = express.Router();
 
 const userRepository = new AuthRepository();
-const adminService = new AdminService(userRepository);
+const serviceRepository = new ServiceRepository();
+const providerProfileRepository = new ProviderProfileRepository();
+const bookingRepository = new BookingRepository();
+const transactionRepository = new TransactionRepository();
+const reportRepository = new ReportRepository();
+
+const adminService = new AdminService(
+    userRepository,
+    serviceRepository,
+    providerProfileRepository,
+    bookingRepository,
+    transactionRepository,
+    reportRepository
+);
 const adminController = new AdminController(adminService);
 
 router.get(ROUTES.ADMIN.USERS,
@@ -97,6 +115,12 @@ router.get(ROUTES.ADMIN.BOOKING_BY_ID,
     authMiddleware,
     roleMiddleware(["admin"]),
     adminController.getBookingById
+);
+
+router.get(ROUTES.ADMIN.REVENUE,
+    authMiddleware,
+    roleMiddleware(["admin"]),
+    adminController.getRevenueReport
 );
 
 export default router;

@@ -27,4 +27,11 @@ export interface IAdminService {
   getDashboardStats(timeRange?: string): Promise<AdminDashboardStats>;
   getAllBookings(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ bookings: any[], total: number }>;
   getBookingById(id: string): Promise<any>;
+  getRevenueReport(timeRange?: string): Promise<{
+    totalRevenue: number;
+    revenueByMonth: { month: string; year: number; revenue: number }[];
+    totalBookings: number;
+    completedBookings: number;
+    platformFeeCollected: number;
+  }>;
 }
