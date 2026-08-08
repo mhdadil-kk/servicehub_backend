@@ -1,5 +1,5 @@
-import { IWallet } from "../../models/wallet.model";
-import { ITransaction } from "../../models/transaction.model";
+import { IWallet } from "../../types/wallet.types";
+import { ITransaction } from "../../types/transaction.types";
 
 export interface IWalletService {
   getWallet(userId: string): Promise<IWallet>;

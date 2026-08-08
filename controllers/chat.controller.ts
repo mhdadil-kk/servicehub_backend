@@ -1,70 +1,69 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import { IChatService } from "../interfaces/services/IChatService";
-import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
-import { SUCCESS_MESSAGES } from "../constants/messages";
-import { ConversationMapper } from "../mappers/conversation.mapper";
-import { MessageMapper } from "../mappers/message.mapper";
+import { createSuccessResponse } from "../types/response";
+import { asyncHandler } from "../utils/async-handler";
+
 
 export class ChatController {
-  private  _chatService: IChatService;
-  constructor(chatService: IChatService) {
-    this._chatService = chatService;
-  }
+  constructor(private _chatService: IChatService) {}
 
-  getConversations = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const conversations = await this._chatService.getConversations(req.user!.id);
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(ConversationMapper.toArrayResponse(conversations, true), SUCCESS_MESSAGES.CONVERSATIONS_FETCHED)
-      );
-    } catch (error) {
-      next(error);
+  uploadImage = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.file) {
+      throw new Error("No image provided");
     }
-  };
+    res.status(HttpStatusCode.OK).json(
+      createSuccessResponse({ 
+        imageUrl: req.file.path, 
+        imagePublicId: req.file.filename 
+      }, "Image uploaded successfully")
+    );
+  });
 
-  getOrCreateDirectConversation = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const conversation = await this._chatService.getOrCreateDirectConversation(
-        req.user!.id,
-        req.body.targetUserId
-      );
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(ConversationMapper.toDetailedResponse(conversation)));
-    } catch (error) {
-      next(error);
-    }
-  };
+  deleteConversation = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const conversationId = req.params.conversationId as string;
+    await this._chatService.deleteConversation(conversationId, userId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Conversation deleted"));
+  });
 
-  getChatHistory = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const history = await this._chatService.getChatHistory(req.params.bookingId, req.user!.id);
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(MessageMapper.toArrayResponse(history), SUCCESS_MESSAGES.CHAT_HISTORY_FETCHED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  deleteMessage = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const messageId = req.params.messageId as string;
+    await this._chatService.deleteMessage(messageId, userId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Message deleted"));
+  });
 
-  markAsRead = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await this._chatService.markAsRead(req.params.bookingId, req.user!.id);
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(null, SUCCESS_MESSAGES.MESSAGES_MARKED_READ)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  getConversations = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const conversations = await this._chatService.getConversations(userId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(conversations));
+  });
 
-  deleteConversation = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await this._chatService.deleteConversation(req.params.conversationId, req.user!.id);
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(null, SUCCESS_MESSAGES.CONVERSATION_DELETED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  getOrCreateDirectConversation = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const { targetUserId } = req.body;
+    const conversation = await this._chatService.getOrCreateDirectConversation(userId, targetUserId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(conversation));
+  });
+
+  getChatHistory = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const conversationId = req.params.conversationId as string;
+    const messages = await this._chatService.getChatHistory(conversationId, userId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(messages));
+  });
+
+  markAsRead = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const conversationId = req.params.conversationId as string;
+    await this._chatService.markAsRead(conversationId, userId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Messages marked as read"));
+  });
+
+  markAsDelivered = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const result = await this._chatService.markAsDelivered(userId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(result, "Messages marked as delivered"));
+  });
 }

@@ -2,13 +2,11 @@ import { IConversationRepository } from "../interfaces/repositories/IConversatio
 import { IMessageRepository } from "../interfaces/repositories/IMessageRepository";
 import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
 import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
-import { IMessage } from "../types/chat.types";
-import { IConversation } from "../models/conversation.model";
+import { IMessage, IConversation } from "../types/chat.types";
 import { NotFoundError, ForbiddenError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
 import { IChatService, ConversationListItem } from "../interfaces/services/IChatService";
-
-
+import { IBooking } from "../types/booking.types";
 
 export class ChatService implements IChatService {
     private _conversationRepository: IConversationRepository;
@@ -32,15 +30,15 @@ export class ChatService implements IChatService {
 
     const results = await Promise.all(
       conversations.map(async (c) => {
-        const convId = c._id.toString();
+        const convId = c.id;
         const lastMessage = await this._messageRepository.findLastByConversationId(convId);
         const unreadCount = await this._messageRepository.countUnread(convId, userId);
         const providerInfo = await this.resolveProviderInfo(c.participants as unknown as { role: string }[]);
 
-        const obj = c.toObject();
+        const obj = (c as IConversation & { toObject?: () => IConversation }).toObject ? (c as IConversation & { toObject?: () => IConversation }).toObject!() : { ...c };
         const pIndex = obj.participants.findIndex((p: { role: string }) => p.role === "provider");
         if (pIndex >= 0 && providerInfo.profilePhoto) {
-          obj.participants[pIndex].profilePhoto = providerInfo.profilePhoto;
+          (obj.participants[pIndex] as unknown as { profilePhoto: string }).profilePhoto = providerInfo.profilePhoto;
         }
 
         return {
@@ -48,7 +46,7 @@ export class ChatService implements IChatService {
           lastMessage,
           unreadCount,
           providerServiceName: providerInfo.serviceName,
-        };
+        } as unknown as ConversationListItem;
       })
     );
 
@@ -63,14 +61,14 @@ export class ChatService implements IChatService {
     });
   }
 
-  async getOrCreateDirectConversation(userId: string, targetUserId: string): Promise<unknown> {
+  async getOrCreateDirectConversation(userId: string, targetUserId: string): Promise<IConversation & { providerServiceName?: string }> {
     const existing = await this._conversationRepository.findDirectBetweenUsers(userId, targetUserId);
     if (existing.length > 0) {
       return this.enrichConversation(existing[0], userId);
     }
 
     const created = await this._conversationRepository.createDirect([userId, targetUserId]);
-    const populated = await this._conversationRepository.findByIdOrBookingIdPopulated(created._id.toString());
+    const populated = await this._conversationRepository.findByIdOrBookingIdPopulated(created.id);
     if (!populated) throw new NotFoundError(ERROR_MESSAGES.CHAT_CONVERSATION_NOT_FOUND);
     return this.enrichConversation(populated, userId);
   }
@@ -83,7 +81,7 @@ export class ChatService implements IChatService {
     if (!this._conversationRepository.isParticipant(conversation, userId)) {
       throw new ForbiddenError(ERROR_MESSAGES.CHAT_ACCESS_DENIED);
     }
-    return this._messageRepository.findByConversationId(conversation._id.toString());
+    return this._messageRepository.findByConversationId(conversation.id);
   }
 
   async saveMessage(
@@ -101,12 +99,14 @@ export class ChatService implements IChatService {
       if (booking) {
         const provProfile = await this._providerProfileRepository.findById(booking.providerId.toString());
         if (provProfile) {
+          const bookingDoc = booking as IBooking & { _id?: { toString: () => string } };
+          const bId = bookingDoc.id || bookingDoc._id?.toString() || bookingId;
           conversation = await this._conversationRepository.createForBooking(
             [booking.userId.toString(), provProfile.userId.toString()],
-            booking._id.toString()
+            bId
           );
           conversation = await this._conversationRepository.findByIdOrBookingIdPopulated(
-            conversation._id.toString()
+            conversation.id
           );
         }
       }
@@ -118,14 +118,40 @@ export class ChatService implements IChatService {
     }
 
     const savedMsg = await this._messageRepository.createTextMessage({
-      conversationId: conversation._id.toString(),
+      conversationId: conversation.id,
       bookingId: conversation.bookingId?.toString() ?? null,
       senderId,
       senderRole,
       content,
     });
 
-    await this._conversationRepository.touchUpdatedAt(conversation._id.toString());
+    await this._conversationRepository.touchUpdatedAt(conversation.id);
+    return savedMsg;
+  }
+
+  async saveImageMessage(
+    conversationId: string,
+    senderId: string,
+    senderRole: "user" | "provider",
+    imageUrl: string,
+    imagePublicId: string
+  ): Promise<IMessage> {
+    const conversation = await this._conversationRepository.findByIdOrBookingIdPopulated(conversationId);
+    if (!conversation) throw new NotFoundError(ERROR_MESSAGES.CHAT_CONVERSATION_NOT_FOUND);
+    if (!this._conversationRepository.isParticipant(conversation, senderId)) {
+      throw new ForbiddenError(ERROR_MESSAGES.CHAT_ACCESS_DENIED);
+    }
+
+    const savedMsg = await this._messageRepository.createImageMessage({
+      conversationId: conversation.id,
+      bookingId: conversation.bookingId?.toString() ?? null,
+      senderId,
+      senderRole,
+      imageUrl,
+      imagePublicId,
+    });
+
+    await this._conversationRepository.touchUpdatedAt(conversation.id);
     return savedMsg;
   }
 
@@ -135,12 +161,12 @@ export class ChatService implements IChatService {
     );
     if (!conversation) return;
     if (!this._conversationRepository.isParticipant(conversation, userId)) return;
-    await this._messageRepository.markReadByConversation(conversation._id.toString(), userId);
+    await this._messageRepository.markReadByConversation(conversation.id, userId);
   }
 
   async markAsDelivered(userId: string): Promise<string[]> {
     const conversations = await this._conversationRepository.findByUserIdPopulated(userId);
-    const conversationIds = conversations.map((c) => c._id.toString());
+    const conversationIds = conversations.map((c) => c.id);
     const undeliveredIds = await this._messageRepository.findUndeliveredConversationIds(
       userId,
       conversationIds
@@ -164,7 +190,7 @@ export class ChatService implements IChatService {
   }
 
   async deleteMessage(messageId: string, userId: string): Promise<IMessage> {
-    const updated = await this._messageRepository.softDelete(messageId, userId);
+    const updated = await this._messageRepository.softDeleteMessage(messageId, userId);
     if (!updated) {
       const message = await this._messageRepository.findById(messageId);
       if (!message) throw new NotFoundError(ERROR_MESSAGES.CHAT_MESSAGE_NOT_FOUND);
@@ -192,14 +218,14 @@ export class ChatService implements IChatService {
     }
   }
 
-  private async enrichConversation(conversation: IConversation, _userId: string) {
-    const obj = conversation.toObject();
+  private async enrichConversation(conversation: IConversation, _userId: string): Promise<IConversation & { providerServiceName?: string }> {
+    const obj = (conversation as IConversation & { toObject?: () => IConversation }).toObject ? (conversation as IConversation & { toObject?: () => IConversation }).toObject!() : { ...conversation };
     const providerInfo = await this.resolveProviderInfo(obj.participants as unknown as { role: string; _id?: unknown; id?: unknown }[]);
     const pIndex = obj.participants.findIndex((p: { role: string }) => p.role === "provider");
     if (pIndex >= 0 && providerInfo.profilePhoto) {
-      obj.participants[pIndex].profilePhoto = providerInfo.profilePhoto;
+      (obj.participants[pIndex] as unknown as { profilePhoto: string }).profilePhoto = providerInfo.profilePhoto;
     }
-    obj.providerServiceName = providerInfo.serviceName;
-    return obj;
+    (obj as IConversation & { providerServiceName?: string }).providerServiceName = providerInfo.serviceName;
+    return obj as IConversation & { providerServiceName?: string };
   }
 }

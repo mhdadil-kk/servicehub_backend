@@ -1,13 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { IService } from "../types/service.types";
 
-export interface IService extends Document {
-  name: string;
-  slug: string;
-  description: string;
-  isActive: boolean;
-  isDeleted: boolean;
-  createdAt: Date;
-}
+export interface IServiceDocument extends IService, Document {}
 
 const ServiceSchema: Schema = new Schema({
   name: { type: String, required: true, unique: true },
@@ -20,8 +14,8 @@ const ServiceSchema: Schema = new Schema({
 
 ServiceSchema.pre("validate", async function() {
   if (this.name && !this.slug) {
-    this.slug = this.name.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
+    this.slug = (this.name as string).toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
   }
 });
 
-export default mongoose.model<IService>("Service", ServiceSchema);
+export default mongoose.model<IServiceDocument>("Service", ServiceSchema);

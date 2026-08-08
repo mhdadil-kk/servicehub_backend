@@ -1,16 +1,12 @@
-import express from "express";
+import { Router } from "express";
+import { addressService } from "../di/container";
 import { AddressController } from "../controllers/address.controller";
-import { AddressService } from "../services/address.service";
-import { AddressRepository } from "../repositories/address.repository";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import { CreateAddressSchema, UpdateAddressSchema } from "../dtos/address.dto";
 import { ROUTES } from "../constants/routes";
 
-const router = express.Router();
-
-const addressRepository = new AddressRepository();
-const addressService = new AddressService(addressRepository);
+const router = Router();
 const addressController = new AddressController(addressService);
 
 router.use(authMiddleware);

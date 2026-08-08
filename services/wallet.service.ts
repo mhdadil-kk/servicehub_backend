@@ -1,7 +1,7 @@
 import { IWalletRepository } from "../interfaces/repositories/IWalletRepository";
 import { ITransactionRepository } from "../interfaces/repositories/ITransactionRepository";
-import { IWallet } from "../models/wallet.model";
-import { ITransaction } from "../models/transaction.model";
+import { IWallet } from "../types/wallet.types";
+import { ITransaction } from "../types/transaction.types";
 import { IWalletService } from "../interfaces/services/IWalletService";
 
 export class WalletService implements IWalletService {
@@ -21,14 +21,14 @@ export class WalletService implements IWalletService {
 
   async getHistory(userId: string): Promise<ITransaction[]> {
     const wallet = await this.getWallet(userId);
-    return this._transactionRepository.findByWalletId(wallet._id.toString());
+    return this._transactionRepository.findByWalletId(wallet.id);
   }
 
   async credit(userId: string, amount: number, description: string, referenceId?: string): Promise<ITransaction> {
     const wallet = await this.getWallet(userId);
 
     const transaction = await this._transactionRepository.createTransaction({
-      walletId: wallet._id.toString(),
+      walletId: wallet.id,
       userId,
       type: "credit",
       amount,
@@ -36,7 +36,7 @@ export class WalletService implements IWalletService {
       referenceId,
     });
 
-    await this._walletRepository.updateBalance(wallet._id.toString(), wallet.balance + amount);
+    await this._walletRepository.updateBalance(wallet.id, wallet.balance + amount);
     return transaction;
   }
 
@@ -44,7 +44,7 @@ export class WalletService implements IWalletService {
     const wallet = await this.getWallet(userId);
 
     const transaction = await this._transactionRepository.createTransaction({
-      walletId: wallet._id.toString(),
+      walletId: wallet.id,
       userId,
       type: "debit",
       amount,
@@ -52,14 +52,14 @@ export class WalletService implements IWalletService {
       referenceId,
     });
 
-    await this._walletRepository.updateBalance(wallet._id.toString(), wallet.balance - amount);
+    await this._walletRepository.updateBalance(wallet.id, wallet.balance - amount);
     return transaction;
   }
 
   async logExpense(userId: string, amount: number, description: string, referenceId?: string): Promise<ITransaction> {
     const wallet = await this.getWallet(userId);
     return this._transactionRepository.createTransaction({
-      walletId: wallet._id.toString(),
+      walletId: wallet.id,
       userId,
       type: "debit",
       amount,

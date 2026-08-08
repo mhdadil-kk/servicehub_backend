@@ -1,4 +1,5 @@
-import { OTPModel, IOTP } from "../models/otp.model";
+import { OTPModel } from "../models/otp.model";
+import { IOTP } from "../types/auth.types";
 import { BaseRepository } from "../repositories/base.repository";
 import { IOTPRepository } from "../interfaces/repositories/IOTPRepository";
 
@@ -16,3 +17,4 @@ export class OTPRepository extends BaseRepository<IOTP> implements IOTPRepositor
     await this.model.deleteMany({ user_id: userId }).exec();
   }
 }
+

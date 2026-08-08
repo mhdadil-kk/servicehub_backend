@@ -1,4 +1,4 @@
-import { IReport } from "../../models/report.model";
+import { IReport } from "../../types/report.types";
 
 export interface CreateReportInput {
   reportedId: string;

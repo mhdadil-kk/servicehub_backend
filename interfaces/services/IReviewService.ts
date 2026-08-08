@@ -1,4 +1,4 @@
-import { IReview } from "../../models/review.model";
+import { IReview } from "../../types/review.types";
 import { ReviewPagination } from "../../types/review.types";
 
 export interface CreateReviewInput {

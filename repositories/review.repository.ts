@@ -1,10 +1,12 @@
-import { ReviewModel, IReview } from "../models/review.model";
+import { ReviewModel, IReviewDocument } from "../models/review.model";
+import { IReview } from "../types/review.types";
 import { BaseRepository } from "./base.repository";
 import { FilterQuery } from "mongoose";
+
 import { IReviewRepository } from "../interfaces/repositories/IReviewRepository";
 
 export class ReviewRepository
-  extends BaseRepository<IReview>
+  extends BaseRepository<IReviewDocument>
   implements IReviewRepository
 {
   constructor() {
@@ -16,9 +18,9 @@ export class ReviewRepository
     userId: string
   ): Promise<IReview | null> {
     return this.model
-      .findOne({ bookingId, userId } as FilterQuery<IReview>)
+      .findOne({ bookingId, userId } as FilterQuery<IReviewDocument>)
       .populate("userId", "name profilePhoto")
-      .exec();
+      .exec() as unknown as IReview | null;
   }
 
   async findByProviderId(
@@ -27,17 +29,17 @@ export class ReviewRepository
     limit: number
   ): Promise<IReview[]> {
     return this.model
-      .find({ providerId } as FilterQuery<IReview>)
+      .find({ providerId } as FilterQuery<IReviewDocument>)
       .populate("userId", "name profilePhoto")
       .sort({ created_at: -1 })
       .skip(skip)
       .limit(limit)
-      .exec();
+      .exec() as unknown as IReview[];
   }
 
   async countByProviderId(providerId: string): Promise<number> {
     return this.model
-      .countDocuments({ providerId } as FilterQuery<IReview>)
+      .countDocuments({ providerId } as FilterQuery<IReviewDocument>)
       .exec();
   }
 
@@ -48,10 +50,10 @@ export class ReviewRepository
     rating: number;
     reviewText: string;
   }): Promise<IReview> {
-    return super.create(data as Partial<IReview>);
+    return super.create(data as unknown as Partial<IReviewDocument>) as unknown as IReview;
   }
 
   async toggleLikeByProvider(id: string, liked: boolean): Promise<IReview | null> {
-    return this.update(id, { likedByProvider: liked });
+    return this.update(id, { likedByProvider: liked } as unknown as Partial<IReviewDocument>) as unknown as IReview | null;
   }
 }

@@ -1,25 +1,27 @@
-import WalletModel, { IWallet } from "../models/wallet.model";
+import { FilterQuery } from "mongoose";
+import WalletModel, { IWalletDocument } from "../models/wallet.model";
+import { IWallet } from "../types/wallet.types";
 import { BaseRepository } from "./base.repository";
-import { FilterQuery } from "mongoose"
+
 import { IWalletRepository } from "../interfaces/repositories/IWalletRepository";
 
 export class WalletRepository
-    extends BaseRepository<IWallet>
+    extends BaseRepository<IWalletDocument>
     implements IWalletRepository {
     constructor() {
         super(WalletModel);
     }
     async findByUserId(userId: string): Promise<IWallet | null> {
-        return this.findOne({ userId } as FilterQuery<IWallet>);
+        return this.findOne({ userId } as FilterQuery<IWalletDocument>) as unknown as IWallet | null;
     }
     async findOrCreateByUserId(userId: string): Promise<IWallet> {
         let wallet = await this.findByUserId(userId);
         if (!wallet) {
-            wallet = await this.create({ userId, balance: 0, currency: "INR" } as Partial<IWallet>);
+            wallet = await super.create({ userId, balance: 0, currency: "INR" } as unknown as Partial<IWalletDocument>) as unknown as IWallet;
         }
         return wallet;
     }
     async updateBalance(walletId: string, balance: number): Promise<IWallet | null> {
-        return this.update(walletId, { balance });
+        return this.update(walletId, { balance } as unknown as Partial<IWalletDocument>) as unknown as IWallet | null;
     }
 }

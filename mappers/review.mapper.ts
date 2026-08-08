@@ -1,26 +1,26 @@
-import { IReview } from "../models/review.model";
+import { IReview } from "../types/review.types";
 import { ReviewResponse, ReviewUserSnippet } from "../types/review.types";
 import mongoose from "mongoose";
 
 export class ReviewMapper {
   static toResponse(review: IReview): ReviewResponse {
     return {
-      _id: review._id.toString(),
+      _id: review.id,
       bookingId: review.bookingId.toString(),
       providerId: review.providerId.toString(),
       userId: ReviewMapper.mapUserId(review.userId),
       rating: review.rating,
       reviewText: review.reviewText,
       likedByProvider: review.likedByProvider,
-      created_at: review.created_at.toISOString(),
+      created_at: review.created_at ? new Date(review.created_at).toISOString() : new Date().toISOString(),
     };
   }
 
   private static mapUserId(
     userId: IReview["userId"]
   ): ReviewUserSnippet | string {
-    if (userId instanceof mongoose.Types.ObjectId) {
-      return userId.toString();
+    if ((userId as unknown) instanceof mongoose.Types.ObjectId) {
+      return (userId as unknown as mongoose.Types.ObjectId).toString();
     }
 
     if (typeof userId === "object" && userId !== null && "_id" in userId) {

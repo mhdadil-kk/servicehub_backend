@@ -14,7 +14,7 @@ export const UpdateStatusSchema = z.object({
   }),
   body: z.object({
     status: z.enum(["approved", "rejected", "pending"], {
-      errorMap: () => ({ message: "Status must be approved, rejected, or pending" })
+      message: "Status must be approved, rejected, or pending"
     })
   })
 });

@@ -1,4 +1,4 @@
-import { IWallet } from "../../models/wallet.model";
+import { IWallet } from "../../types/wallet.types";
 
 export interface IWalletRepository {
     findByUserId(userId: string): Promise<IWallet | null>

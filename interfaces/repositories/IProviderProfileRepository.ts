@@ -1,4 +1,5 @@
 import { IProviderProfile } from "../../types/providerProfile.types";
+import mongoose from "mongoose";
 
 export interface FindApprovedProvidersOptions {
   serviceId?: string;
@@ -22,7 +23,7 @@ export interface IProviderProfileRepository {
   updateById(id: string, data: Partial<IProviderProfile>): Promise<IProviderProfile | null>;
   incrementRating(providerProfileId: string, rating: number): Promise<void>;
   findApprovedProviders(options: FindApprovedProvidersOptions): Promise<{ providers: IProviderProfile[]; total: number }>;
-  findPendingProviders(dateFilter?: any): Promise<IProviderProfile[]>;
-  countByStatus(status: string, dateFilter?: any): Promise<number>;
+  findPendingProviders(dateFilter?: mongoose.FilterQuery<IProviderProfile>): Promise<IProviderProfile[]>;
+  countByStatus(status: string, dateFilter?: mongoose.FilterQuery<IProviderProfile>): Promise<number>;
   findIdsByUserIds(userIds: string[]): Promise<string[]>;
 }

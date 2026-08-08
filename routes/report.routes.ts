@@ -1,9 +1,6 @@
-import express from "express";
+import { Router } from "express";
+import { reportService } from "../di/container"; 
 import { ReportController } from "../controllers/report.controller";
-import { ReportService } from "../services/report.service";
-import { ReportRepository } from "../repositories/report.repository";
-import { NotificationRepository } from "../repositories/notification.repository";
-import { NotificationService } from "../services/notification.service";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { roleMiddleware } from "../middlewares/role.middleware";
 import { validate } from "../middlewares/validate.middleware";
@@ -16,12 +13,7 @@ import {
 } from "../dtos/report.dto";
 import { ROUTES } from "../constants/routes";
 
-const router = express.Router();
-
-const reportRepository = new ReportRepository();
-const notificationRepository = new NotificationRepository();
-const notificationService = new NotificationService(notificationRepository);
-const reportService = new ReportService(reportRepository, notificationService);
+const router = Router();
 const reportController = new ReportController(reportService);
 
 router.use(authMiddleware);
@@ -42,7 +34,7 @@ router.get(
 
 router.get(
   ROUTES.REPORTS.ALL,
-  roleMiddleware(["admin"]),
+  roleMiddleware("admin"),
   validate(ReportQuerySchema),
   reportController.getAllReports
 );
@@ -55,7 +47,7 @@ router.get(
 
 router.put(
   ROUTES.REPORTS.ACTION,
-  roleMiddleware(["admin"]),
+  roleMiddleware("admin"),
   validate(ReportActionSchema),
   reportController.takeAction
 );

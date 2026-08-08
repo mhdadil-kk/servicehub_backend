@@ -2,12 +2,11 @@ import mongoose from "mongoose";
 import { IReviewRepository } from "../interfaces/repositories/IReviewRepository";
 import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
 import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
-import { IReview } from "../models/review.model";
+import { IReview } from "../types/review.types";
 import { BadRequestError, NotFoundError, ForbiddenError } from "../utils/error";
 import { REVIEWABLE_BOOKING_STATUSES } from "../constants/statuses";
 import { logger } from "../utils/logger";
 import { ERROR_MESSAGES } from "../constants/messages";
-import { ReviewPagination } from "../types/review.types";
 import { IReviewService, CreateReviewInput, CreateReviewResult, ProviderReviewsResult } from "../interfaces/services/IReviewService";
 
 export class ReviewService implements IReviewService {

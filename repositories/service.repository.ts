@@ -1,8 +1,9 @@
 import { BaseRepository } from "./base.repository";
-import Service, { IService } from "../models/service.model";
+import Service, { IServiceDocument } from "../models/service.model";
 import { IServiceRepository } from "../interfaces/repositories/IServiceRepository";
+import mongoose from "mongoose";
 
-export class ServiceRepository extends BaseRepository<IService> implements IServiceRepository {
+export class ServiceRepository extends BaseRepository<IServiceDocument> implements IServiceRepository {
   constructor() {
     super(Service);
   }
@@ -16,6 +17,6 @@ export class ServiceRepository extends BaseRepository<IService> implements IServ
       name: { $regex: name, $options: "i" }
     }).select("_id").exec();
 
-    return services.map((s: any) => s._id.toString());
+    return services.map((s: { _id: mongoose.Types.ObjectId }) => s._id.toString());
   }
 }

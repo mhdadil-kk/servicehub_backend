@@ -1,5 +1,7 @@
 import { IUser } from "../../types/user.types";
-import { IService } from "../../models/service.model";
+import { IService } from "../../types/service.types";
+import { IProviderProfile } from "../../types/providerProfile.types";
+import { IBooking } from "../../types/booking.types";
 
 export interface AdminDashboardStats {
   totalUsers: number;
@@ -8,7 +10,7 @@ export interface AdminDashboardStats {
   totalRevenue: number;
   pendingProviders: number;
   openReports: number;
-  userGrowth: { month: string; value: number }[];
+  userGrowth: { label: string; users: number; providers: number }[];
   bookingTrends: { label: string; val: number; color?: string }[];
 }
 
@@ -21,12 +23,12 @@ export interface IAdminService {
   addService(data: Partial<IService>): Promise<IService>;
   getAllServices(): Promise<IService[]>;
   deleteService(id: string): Promise<void>;
-  getPendingProviders(): Promise<any[]>;
-  getProviderDetail(userId: string): Promise<any>;
+  getPendingProviders(): Promise<IProviderProfile[]>;
+  getProviderDetail(userId: string): Promise<IProviderProfile | null>;
   verifyProvider(userId: string, status: "approved" | "rejected", remarks?: string): Promise<void>;
   getDashboardStats(timeRange?: string): Promise<AdminDashboardStats>;
-  getAllBookings(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ bookings: any[], total: number }>;
-  getBookingById(id: string): Promise<any>;
+  getAllBookings(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ bookings: IBooking[], total: number }>;
+  getBookingById(id: string): Promise<IBooking | null>;
   getRevenueReport(timeRange?: string): Promise<{
     totalRevenue: number;
     revenueByMonth: { month: string; year: number; revenue: number }[];

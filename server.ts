@@ -1,13 +1,11 @@
-import dotenv from "dotenv";
-dotenv.config();
-
+import "dotenv/config";
 import http from "http";
 import { Server } from "socket.io";
 import { connectDB } from "./config/db";
 import app from "./app";
 import { logger } from "./utils/logger";
 import { setupChatSocket } from "./socket/chat.socket";
-import { chatService } from "./routes/chat.routes";
+import { chatService } from "./di/container";
 
 connectDB();
 

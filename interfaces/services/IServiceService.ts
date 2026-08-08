@@ -1,4 +1,4 @@
-import {IService} from "../../models/service.model"
+import { IService } from "../../types/service.types";
 import { IProviderProfile } from "../../types/providerProfile.types"
 
 
@@ -9,6 +9,7 @@ export interface GetApprovedProvidersOptions {
     longitude?: number;
     radius?: number;
     limit?: number;
+    page?: number;
     sortBy?: string;
     sortOrder?: string;
 }

@@ -1,10 +1,11 @@
-import ReportModel, { IReport } from "../models/report.model";
+import ReportModel, { IReportDocument } from "../models/report.model";
+import { IReport } from "../types/report.types";
 import { BaseRepository } from "./base.repository";
 import mongoose, { FilterQuery } from "mongoose";
 import { IReportRepository } from "../interfaces/repositories/IReportRepository";
 
 export class ReportRepository
-  extends BaseRepository<IReport>
+  extends BaseRepository<IReportDocument>
   implements IReportRepository
 {
   constructor() {
@@ -12,7 +13,7 @@ export class ReportRepository
   }
 
   async create(data: Partial<IReport>): Promise<IReport> {
-    return super.create(data);
+    return super.create(data as unknown as Partial<IReportDocument>) as unknown as IReport;
   }
 
   async findById(id: string): Promise<IReport | null> {
@@ -21,15 +22,15 @@ export class ReportRepository
       .populate("reporterId", "name email phone profilePhoto role")
       .populate("reportedId", "name email phone profilePhoto role")
       .populate("bookingId")
-      .exec();
+      .exec() as unknown as IReport | null;
   }
 
   async findByReporterId(reporterId: string): Promise<IReport[]> {
     return this.model
-      .find({ reporterId } as FilterQuery<IReport>)
+      .find({ reporterId } as FilterQuery<IReportDocument>)
       .populate("reportedId", "name email profilePhoto role")
       .sort({ createdAt: -1 })
-      .exec();
+      .exec() as unknown as IReport[];
   }
 
   async findReports(
@@ -38,7 +39,7 @@ export class ReportRepository
     limit = 10
   ): Promise<{ reports: IReport[]; total: number }> {
     const skip = (page - 1) * limit;
-    const query: FilterQuery<IReport> = {};
+    const query: FilterQuery<IReportDocument> = {};
 
     if (filter.status) {
       query.status = filter.status;
@@ -70,15 +71,15 @@ export class ReportRepository
       this.model.countDocuments(query).exec(),
     ]);
 
-    return { reports, total };
+    return { reports: reports as unknown as IReport[], total };
   }
 
   async update(id: string, data: Partial<IReport>): Promise<IReport | null> {
     return this.model
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data as unknown as mongoose.UpdateQuery<IReportDocument>, { returnDocument: "after" })
       .populate("reporterId", "name email phone profilePhoto role")
       .populate("reportedId", "name email phone profilePhoto role")
       .populate("bookingId")
-      .exec();
+      .exec() as unknown as IReport | null;
   }
 }

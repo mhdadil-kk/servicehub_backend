@@ -1,26 +1,13 @@
-import express from "express";
+import { Router } from "express";
+import { reviewService } from "../di/container"; 
 import { ReviewController } from "../controllers/review.controller";
-import { ReviewService } from "../services/review.service";
-import { ReviewRepository } from "../repositories/review.repository";
-import { BookingRepository } from "../repositories/booking.repository";
-import { ProviderProfileRepository } from "../repositories/providerProfile.repository";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { roleMiddleware } from "../middlewares/role.middleware";
 import { ROUTES } from "../constants/routes";
 import { validate } from "../middlewares/validate.middleware";
 import { CreateReviewSchema, GetProviderReviewsSchema } from "../dtos/review.dto";
 
-
-const router = express.Router();
-
-const reviewRepository = new ReviewRepository();
-const bookingRepository = new BookingRepository();
-const providerProfileRepository = new ProviderProfileRepository();
-const reviewService = new ReviewService(
-  reviewRepository,
-  bookingRepository,
-  providerProfileRepository
-);
+const router = Router();
 const reviewController = new ReviewController(reviewService);
 
 router.post(
@@ -36,7 +23,7 @@ router.get(
 );
 router.patch(ROUTES.REVIEWS.LIKE,
   authMiddleware,
-  roleMiddleware(["provider"]),
+  roleMiddleware("provider"),
   reviewController.likeReview
 );
 

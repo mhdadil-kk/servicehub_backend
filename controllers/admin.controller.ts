@@ -1,193 +1,121 @@
-import { Request, Response, NextFunction } from "express";
+﻿import { Request, Response } from "express";
 import { IAdminService } from "../interfaces/services/IAdminService";
-import { createSuccessResponse } from "../types/response";
-import { UserMapper } from "../mappers/user.mapper";
-import { ServiceMapper } from "../mappers/service.mapper";
-import { ProviderProfileMapper } from "../mappers/providerProfile.mapper";
-import { BookingMapper } from "../mappers/booking.mapper";
 import { HttpStatusCode } from "../types/http";
-import { SUCCESS_MESSAGES } from "../constants/messages";
+import { createSuccessResponse } from "../types/response";
+import { asyncHandler } from "../utils/async-handler";
+
 
 export class AdminController {
-  private _adminService: IAdminService;
+  constructor(private _adminService: IAdminService) {}
 
-  constructor(adminService: IAdminService) {
-    this._adminService = adminService;
-  }
+  getAllUsers = asyncHandler(async (req: Request, res: Response) => {
+    const { search, status, sort, page, limit } = req.query;
+    const result = await this._adminService.getAllUsers(
+      search as string,
+      status as string,
+      sort as string,
+      page ? parseInt(page as string) : 1,
+      limit ? parseInt(limit as string) : 10
+    );
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(result));
+  });
 
+  getProviders = asyncHandler(async (req: Request, res: Response) => {
+    const { search, status, sort, page, limit } = req.query;
+    const result = await this._adminService.getProviders(
+      search as string,
+      status as string,
+      sort as string,
+      page ? parseInt(page as string) : 1,
+      limit ? parseInt(limit as string) : 10
+    );
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(result));
+  });
 
-  getAllUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const search = req.query.search as string;
-      const status = req.query.status as string; 
-      const sort = req.query.sort as string;
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 3;
-      
-      const { users, total } = await this._adminService.getAllUsers(search, status, sort, page, limit);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse({ 
-        users: UserMapper.toResponse(users),
-        total,
-        page,
-        limit
-      }));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
+  updateUserStatus = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    const updated = await this._adminService.updateUserStatus(id, status);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(updated, "Status updated"));
+  });
 
+  unblockUser = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const updated = await this._adminService.unblockUser(id);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(updated, "User unblocked"));
+  });
 
-  getProviders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const search = req.query.search as string;
-      const status = req.query.status as string; 
-      const sort = req.query.sort as string;
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 10;
-      
-      const { providers, total } = await this._adminService.getProviders(search, status, sort, page, limit);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse({ 
-        providers: UserMapper.toResponse(providers),
-        total,
-        page,
-        limit
-      }));
-    } catch (error: unknown) {
-      next(error);
-    } 
-  };
+  deleteUser = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    await this._adminService.deleteUser(id);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "User deleted"));
+  });
 
+  addService = asyncHandler(async (req: Request, res: Response) => {
+    const result = await this._adminService.addService(req.body);
+    res.status(HttpStatusCode.CREATED).json(createSuccessResponse(result, "Service added"));
+  });
 
-  updateUserStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const id = req.params.id;
-      const { status } = req.body;
+  getAllServices = asyncHandler(async (req: Request, res: Response) => {
+    const services = await this._adminService.getAllServices();
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(services));
+  });
 
-      const user = await this._adminService.updateUserStatus(id, status);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse({ user: UserMapper.toResponse(user) }, SUCCESS_MESSAGES.USER_UPDATED));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
+  deleteService = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    await this._adminService.deleteService(id);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Service deleted"));
+  });
 
+  getPendingProviders = asyncHandler(async (req: Request, res: Response) => {
+    const pending = await this._adminService.getPendingProviders();
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(pending));
+  });
 
-  unblockUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const id = req.params.id;
-      const user = await this._adminService.unblockUser(id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse({ user: UserMapper.toResponse(user) }, SUCCESS_MESSAGES.USER_UNBLOCKED));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
+  getProviderDetail = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const detail = await this._adminService.getProviderDetail(id);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(detail));
+  });
 
+  updateProviderVerification = asyncHandler(async (req: Request, res: Response) => {
+    const { providerId } = req.params;
+    const { status, reason } = req.body;
+    const updated = await this._adminService.updateProviderVerification(providerId, status, reason);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(updated, "Verification status updated"));
+  });
 
-  deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const id = req.params.id;
-      await this._adminService.deleteUser(id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, SUCCESS_MESSAGES.USER_DELETED));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
+  getAdminStats = asyncHandler(async (req: Request, res: Response) => {
+    const stats = await this._adminService.getAdminStats();
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(stats));
+  });
 
-  addService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const service = await this._adminService.addService(req.body);
-      res.status(HttpStatusCode.CREATED).json(createSuccessResponse(ServiceMapper.toResponse(service), SUCCESS_MESSAGES.SERVICE_CATEGORY_CREATED));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
+  getAdminRevenue = asyncHandler(async (req: Request, res: Response) => {
+    const { timeRange } = req.query;
+    const revenue = await this._adminService.getAdminRevenue(timeRange as string);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(revenue));
+  });
 
-  getAllServices = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const services = await this._adminService.getAllServices();
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(ServiceMapper.toArrayResponse(services)));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
+  getUserGrowth = asyncHandler(async (req: Request, res: Response) => {
+    const { timeRange } = req.query;
+    const growth = await this._adminService.getUserGrowth(timeRange as string);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(growth));
+  });
 
-  deleteService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const id = req.params.id;
-      await this._adminService.deleteService(id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, SUCCESS_MESSAGES.SERVICE_CATEGORY_DELETED));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
+  getAllReports = asyncHandler(async (req: Request, res: Response) => {
+    const { status, page, limit } = req.query;
+    const reports = await this._adminService.getAllReports(
+      status as string,
+      page ? parseInt(page as string) : 1,
+      limit ? parseInt(limit as string) : 10
+    );
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(reports));
+  });
 
-
-  getProviderDetail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const provider = await this._adminService.getProviderDetail(req.params.id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(ProviderProfileMapper.toResponse(provider)));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
-
-  verifyProvider = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const id = req.params.id;
-      const { status, remarks } = req.body;
-      await this._adminService.verifyProvider(id, status, remarks);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(null, `Provider ${status} successfully`));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
-
-  getDashboardStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const timeRange = req.query.timeRange as string;
-      const stats = await this._adminService.getDashboardStats(timeRange);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(stats, SUCCESS_MESSAGES.DASHBOARD_STATS_FETCHED));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
-
-  getAllBookings = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const search = req.query.search as string;
-      const status = req.query.status as string;
-      const sort = req.query.sort as string;
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 10;
-      
-      const { bookings, total } = await this._adminService.getAllBookings(search, status, sort, page, limit);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse({
-        bookings: BookingMapper.toArrayResponse(bookings, true),
-        total,
-        page,
-        limit
-      }));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
-
-  getBookingById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const booking = await this._adminService.getBookingById(req.params.id);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking)));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
-
-  getRevenueReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const timeRange = req.query.timeRange as string | undefined;
-      const report = await this._adminService.getRevenueReport(timeRange);
-      res.status(HttpStatusCode.OK).json(createSuccessResponse(report));
-    } catch (error: unknown) {
-      next(error);
-    }
-  };
+  resolveReport = asyncHandler(async (req: Request, res: Response) => {
+    const { reportId } = req.params;
+    const { action, resolutionNotes } = req.body;
+    const resolved = await this._adminService.resolveReport(reportId, action, resolutionNotes);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(resolved, "Report resolved"));
+  });
 }
-

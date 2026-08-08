@@ -1,42 +1,41 @@
 import jwt from "jsonwebtoken";
-import { AppError } from "./error";
+import { env } from "../config/env";
+import { UnauthorizedError } from "./error";
 
-const getSecrets = () => {
-  const access = process.env.ACCESS_TOKEN_SECRET;
-  const refresh = process.env.REFRESH_TOKEN_SECRET;
-  if (!access || !refresh) {
-    throw new AppError("JWT secrets are not defined in environment variables", 500);
-  }
-  return { access, refresh };
-};
 
-export const generateTokens = (userId: string, role: string) => {
-  const { access, refresh } = getSecrets();
-  const accessToken = jwt.sign({ id: userId, role }, access, {
-    expiresIn: "15m",
-  });
+export interface JwtPayload {
+  id:   string;
+  role: string;
+}
 
-  const refreshToken = jwt.sign({ id: userId, role }, refresh, {
-    expiresIn: "7d",
-  });
+export const generateTokens = (
+  userId: string,
+  role: string
+): { accessToken: string; refreshToken: string } => {
+  const accessToken = jwt.sign(
+    { id: userId, role },
+    env.ACCESS_TOKEN_SECRET,
+    { expiresIn: env.ACCESS_TOKEN_EXPIRY as jwt.SignOptions["expiresIn"] }
+  );
+
+  const refreshToken = jwt.sign(
+    { id: userId, role },
+    env.REFRESH_TOKEN_SECRET,
+    { expiresIn: env.REFRESH_TOKEN_EXPIRY as jwt.SignOptions["expiresIn"] }
+  );
 
   return { accessToken, refreshToken };
 };
 
-export const verifyAccessToken = (token: string) => {
-  const { access } = getSecrets();
-  try {
-    return jwt.verify(token, access) as { id: string; role: string };
-  } catch (_error) {
-    throw new AppError("Invalid or expired access token", 401);
-  }
+export const verifyAccessToken = (token: string): JwtPayload => {
+
+  return jwt.verify(token, env.ACCESS_TOKEN_SECRET) as JwtPayload;
 };
 
-export const verifyRefreshToken = (token: string) => {
-  const { refresh } = getSecrets();
+export const verifyRefreshToken = (token: string): JwtPayload => {
   try {
-    return jwt.verify(token, refresh) as { id: string; role: string };
-  } catch (_error) {
-    throw new AppError("Invalid or expired refresh token", 401);
+    return jwt.verify(token, env.REFRESH_TOKEN_SECRET) as JwtPayload;
+  } catch {
+    throw new UnauthorizedError("Invalid or expired refresh token");
   }
 };

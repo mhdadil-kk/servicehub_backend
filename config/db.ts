@@ -1,19 +1,12 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 import { logger } from "../utils/logger";
+import { env } from "./env";
+
 
 export const connectDB = async (): Promise<void> => {
-  try {
-    const uri = process.env.MONGO_URI
-
-    if (!uri) {
-      throw new Error("MONGO_URI is missing in .env")
-    }
-
-    await mongoose.connect(uri)
-
-    logger.info("MongoDB Connected Successfully");
-  } catch (error) {
-    logger.error("MongoDB Connection Error:", error);
-    process.exit(1)
-  }
-}
+  await mongoose.connect(env.MONGO_URI, {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  });
+  logger.info("[DB] ✅ MongoDB connected successfully.");
+};

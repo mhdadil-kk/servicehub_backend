@@ -61,3 +61,23 @@ export const AvailableSlotsSchema = z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   }),
 });
+
+export const UpdateBookingStatusSchema = z.object({
+  body: z.object({
+    status: z.enum(["accepted", "rejected", "completed", "cancelled", "started", "arrived"]),
+  }),
+});
+
+export const GenerateCompletionOtpSchema = z.object({
+  body: z.object({
+    invoiceData: z.object({
+      baseCharge: z.number().positive(),
+      extraCharges: z.array(
+        z.object({
+          description: z.string(),
+          amount: z.number(),
+        })
+      ).optional(),
+    }).optional(),
+  }).optional(),
+});

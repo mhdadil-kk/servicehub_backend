@@ -9,6 +9,7 @@ import bcrypt from "bcrypt";
 import { OTPGenerator } from "../utils/otp";
 import { logger } from "../utils/logger";
 import { IAuthService } from "../interfaces/services/IAuthService";
+import mongoose from "mongoose";
 
 export class AuthService implements IAuthService {
 
@@ -44,7 +45,7 @@ export class AuthService implements IAuthService {
     await this.requestOTP(data.email, "verification");
     return newUser;
   }
-
+  
 
   async login(email: string, password: string) {
     const user = await this._userRepository.findByEmail(email);
@@ -70,7 +71,7 @@ export class AuthService implements IAuthService {
     const expiresAt = new Date(Date.now() + (isReset ? 60 : 5) * 60 * 1000); 
     
     await this._otpRepository.deleteByUserId(user.id);
-    await this._otpRepository.create({ user_id: user.id as string, code, expires_at: expiresAt, type });
+    await this._otpRepository.create({ user_id: new mongoose.Types.ObjectId(user.id), code, expires_at: expiresAt, type });
     
     if (isReset) {
       await this._mailer.sendResetLink(email, code);

@@ -1,4 +1,4 @@
-import { IConversation } from "../../models/conversation.model";
+import { IConversation } from "../../types/chat.types";
 
 export interface IConversationRepository {
   findByParticipants(participantIds: string[]): Promise<IConversation | null>;

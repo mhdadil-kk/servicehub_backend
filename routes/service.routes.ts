@@ -1,6 +1,5 @@
 import express from "express";
 import { ServiceController } from "../controllers/service.controller";
-import { authMiddleware } from "../middlewares/auth.middleware";
 
 import { ServiceService } from "../services/service.service";
 import { ServiceRepository } from "../repositories/service.repository";

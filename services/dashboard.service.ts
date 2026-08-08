@@ -1,8 +1,6 @@
 import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
 import { ITransactionRepository } from "../interfaces/repositories/ITransactionRepository";
 import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
-import { NotFoundError } from "../utils/error";
-import { ERROR_MESSAGES } from "../constants/messages";
 import {
   UPCOMING_BOOKING_STATUSES,
   ACTIVE_PROVIDER_BOOKING_STATUSES,
@@ -55,7 +53,7 @@ export class DashboardService implements IDashboardService {
     if (!provider) {
       return { totalRequests: 0, activeBookings: 0, completedJobs: 0, totalEarnings: 0, recentBookings: [] };
     }
-
+ 
     const providerId = provider._id.toString();
 
     const [

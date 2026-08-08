@@ -17,7 +17,7 @@ import { IWalletService } from "../interfaces/services/IWalletService";
 import { PLATFORM_BOOKING_FEE } from "../constants/payment.constants";
 
 export class BookingService implements IBookingService {
-    private _bookingRepository: IBookingRepository;
+  private _bookingRepository: IBookingRepository;
   private _providerProfileRepository: IProviderProfileRepository;
   private _providerAvailabilityRepository: IProviderAvailabilityRepository;
   private _conversationRepository: IConversationRepository;
@@ -126,13 +126,13 @@ export class BookingService implements IBookingService {
           );
         } else {
           await this._conversationRepository.attachBooking(
-            conversation._id.toString(),
+            conversation.id,
             savedBooking._id.toString()
           );
         }
 
         await this._messageRepository.createBookingCardMessage({
-          conversationId: conversation._id.toString(),
+          conversationId: conversation.id,
           bookingId: savedBooking._id.toString(),
           senderId: userId,
           senderRole: "user",

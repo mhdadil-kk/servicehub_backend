@@ -17,10 +17,18 @@ export interface IMessageRepository {
     senderRole: "user" | "provider";
     content: string;
   }): Promise<IMessage>;
+  createImageMessage(data: {
+    conversationId: string;
+    bookingId?: string | null;
+    senderId: string;
+    senderRole: "user" | "provider";
+    imageUrl: string;
+    imagePublicId: string;
+  }): Promise<IMessage>;
   markReadByConversation(conversationId: string, userId: string): Promise<void>;
   markDeliveredForUserInConversations(conversationIds: string[], userId: string): Promise<void>;
   findUndeliveredConversationIds(userId: string, conversationIds: string[]): Promise<string[]>;
-  softDelete(messageId: string, userId: string): Promise<IMessage | null>;
+  softDeleteMessage(messageId: string, userId: string): Promise<IMessage | null>;
   findById(messageId: string): Promise<IMessage | null>;
   updateById(messageId: string, data: Partial<IMessage>): Promise<IMessage | null>;
   deleteByConversationId(conversationId: string): Promise<void>;

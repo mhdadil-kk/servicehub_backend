@@ -105,6 +105,7 @@ export const ROUTES = {
     CONVERSATION_BY_ID: "/conversations/:conversationId",
     HISTORY: "/:bookingId",
     MARK_READ: "/:bookingId/read",
+    UPLOAD_IMAGE: "/upload-image",
   },
   REPORTS: {
     BASE: `${API_PREFIX}/reports`,

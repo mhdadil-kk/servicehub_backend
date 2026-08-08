@@ -1,5 +1,4 @@
 import { IBooking } from "../types/booking.types";
-import mongoose from "mongoose";
 
 export interface BookingResponseDTO {
   _id: string;
@@ -25,25 +24,25 @@ export interface BookingResponseDTO {
 }
 
 export interface DetailedBookingResponseDTO extends BookingResponseDTO {
-  provider?: any;
-  service?: any;
-  address?: any;
-  user?: any;
-  finalInvoice?: any;
+  provider?: Record<string, unknown>;
+  service?: Record<string, unknown>;
+  address?: Record<string, unknown>;
+  user?: Record<string, unknown>;
+  finalInvoice?: Record<string, unknown>;
 }
 
 export class BookingMapper {
-  static toResponse(booking: IBooking | any): BookingResponseDTO | null {
+  static toResponse(booking: IBooking & { toObject?: () => IBooking }): BookingResponseDTO | null {
     if (!booking) return null;
 
     const b = typeof booking.toObject === 'function' ? booking.toObject() : booking;
 
     return {
-      _id: b._id?.toString(),
+      _id: (b as IBooking & { _id?: { toString: () => string }; id?: string })._id?.toString() || (b as IBooking & { id?: string }).id || "",
       userId: b.userId?.toString(),
       providerId: b.providerId?.toString(),
       serviceId: b.serviceId?.toString(),
-      addressId: (b.addressId && typeof b.addressId === 'object') ? b.addressId : b.addressId?.toString(),
+      addressId: (b.addressId && typeof b.addressId === 'object') ? b.addressId as unknown as string : b.addressId?.toString(),
       date: b.date,
       slot: b.slot,
       status: b.status,
@@ -59,7 +58,7 @@ export class BookingMapper {
     };
   }
 
-  static toDetailedResponse(booking: IBooking | any): DetailedBookingResponseDTO | null {
+  static toDetailedResponse(booking: IBooking & { toObject?: () => IBooking }): DetailedBookingResponseDTO | null {
     if (!booking) return null;
     
     const base = this.toResponse(booking);
@@ -69,56 +68,60 @@ export class BookingMapper {
     const b = typeof booking.toObject === 'function' ? booking.toObject() : booking;
 
     if (b.providerId && typeof b.providerId === 'object' && ('userId' in b.providerId || 'hourlyRate' in b.providerId || 'address' in b.providerId)) {
+      const providerObj = b.providerId as unknown as { _id?: { toString: () => string }; userId?: { name: string }; profilePhoto?: string; hourlyRate?: number };
       result.provider = {
-        _id: b.providerId._id?.toString() || b.providerId.toString(),
-        name: b.providerId.userId?.name || "",
-        profilePhoto: b.providerId.profilePhoto,
-        hourlyRate: b.providerId.hourlyRate,
+        _id: providerObj._id?.toString() || (b.providerId as unknown as { toString: () => string }).toString(),
+        name: providerObj.userId?.name || "",
+        profilePhoto: providerObj.profilePhoto,
+        hourlyRate: providerObj.hourlyRate,
       };
-      result.providerId = b.providerId;
+      result.providerId = b.providerId as unknown as string;
     }
 
     if (b.userId && typeof b.userId === 'object' && ('name' in b.userId || 'email' in b.userId)) {
+      const userObj = b.userId as unknown as { _id?: { toString: () => string }; name?: string; profilePhoto?: string };
        result.user = {
-         _id: b.userId._id?.toString() || b.userId.toString(),
-         name: b.userId.name,
-         profilePhoto: b.userId.profilePhoto
+         _id: userObj._id?.toString() || (b.userId as unknown as { toString: () => string }).toString(),
+         name: userObj.name,
+         profilePhoto: userObj.profilePhoto
        };
-       result.userId = b.userId;
+       result.userId = b.userId as unknown as string;
     }
 
     if (b.serviceId && typeof b.serviceId === 'object' && ('name' in b.serviceId || 'description' in b.serviceId)) {
+      const serviceObj = b.serviceId as unknown as { _id?: { toString: () => string }; name?: string; description?: string; categoryId?: { toString: () => string } };
       result.service = {
-        _id: b.serviceId._id?.toString() || b.serviceId.toString(),
-        name: b.serviceId.name,
-        description: b.serviceId.description,
-        categoryId: b.serviceId.categoryId?.toString()
+        _id: serviceObj._id?.toString() || (b.serviceId as unknown as { toString: () => string }).toString(),
+        name: serviceObj.name,
+        description: serviceObj.description,
+        categoryId: serviceObj.categoryId?.toString()
       };
-      result.serviceId = b.serviceId;
+      result.serviceId = b.serviceId as unknown as string;
     }
 
     if (b.addressId && typeof b.addressId === 'object' && ('label' in b.addressId || 'fullAddress' in b.addressId)) {
+      const addressObj = b.addressId as unknown as { _id?: { toString: () => string }; label?: string; fullAddress?: string; latitude?: number; longitude?: number };
       result.address = {
-        _id: b.addressId._id?.toString() || b.addressId.toString(),
-        label: b.addressId.label,
-        fullAddress: b.addressId.fullAddress,
-        latitude: b.addressId.latitude,
-        longitude: b.addressId.longitude
+        _id: addressObj._id?.toString() || (b.addressId as unknown as { toString: () => string }).toString(),
+        label: addressObj.label,
+        fullAddress: addressObj.fullAddress,
+        latitude: addressObj.latitude,
+        longitude: addressObj.longitude
       };
-      result.addressId = b.addressId;
+      result.addressId = b.addressId as unknown as string;
     }
     
     if (b.finalInvoice) {
       result.finalInvoice = {
-        ...b.finalInvoice,
-        _id: b.finalInvoice._id?.toString()
+        ...(b.finalInvoice as Record<string, unknown>),
+        _id: (b.finalInvoice as unknown as { _id?: { toString: () => string } })._id?.toString()
       };
     }
 
     return result;
   }
 
-  static toArrayResponse(bookings: any[], detailed: boolean = false): (BookingResponseDTO | DetailedBookingResponseDTO)[] {
+  static toArrayResponse(bookings: (IBooking & { toObject?: () => IBooking })[], detailed: boolean = false): (BookingResponseDTO | DetailedBookingResponseDTO)[] {
     return bookings.map(b => detailed ? this.toDetailedResponse(b)! : this.toResponse(b)!);
   }
 }

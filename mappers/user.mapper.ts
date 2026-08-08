@@ -1,4 +1,4 @@
-import { IUser, UserResponseDTO } from "../types/user.types";
+import { UserResponseDTO } from "../types/user.types";
 
 export class UserMapper {
   static toResponse(data: unknown): UserResponseDTO | UserResponseDTO[] | null {
@@ -8,13 +8,13 @@ export class UserMapper {
 
     if (!data) return null;
 
-    const userObj = (typeof (data as any).toObject === 'function') 
-      ? (data as any).toObject() 
+    const userObj = (typeof (data as { toObject?: () => unknown }).toObject === 'function') 
+      ? (data as { toObject: () => unknown }).toObject() 
       : data;
 
    
-    const { password: _p, __v: _v, isDeleted: _d, ...safeUser } = userObj as any; 
+    const { password: _p, __v: _v, isDeleted: _d, ...safeUser } = userObj as Record<string, unknown>; 
     
-    return safeUser as UserResponseDTO;
+    return safeUser as unknown as UserResponseDTO;
   }
 }

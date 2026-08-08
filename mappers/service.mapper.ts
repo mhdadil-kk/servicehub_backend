@@ -1,4 +1,4 @@
-import { IService } from "../models/service.model";
+import { IService } from "../types/service.types";
 
 export interface ServiceResponseDTO {
   _id: string;
@@ -10,13 +10,13 @@ export interface ServiceResponseDTO {
 }
 
 export class ServiceMapper {
-  static toResponse(service: IService | any): ServiceResponseDTO | null {
+  static toResponse(service: IService & { toObject?: () => IService }): ServiceResponseDTO | null {
     if (!service) return null;
 
     const s = typeof service.toObject === 'function' ? service.toObject() : service;
 
     return {
-      _id: s._id.toString(),
+      _id: s.id || (s as IService & { _id?: { toString: () => string } })._id?.toString() || "",
       name: s.name,
       slug: s.slug,
       description: s.description,
@@ -25,7 +25,7 @@ export class ServiceMapper {
     };
   }
 
-  static toArrayResponse(services: any[]): ServiceResponseDTO[] {
+  static toArrayResponse(services: (IService & { toObject?: () => IService })[]): ServiceResponseDTO[] {
     return services.map(service => this.toResponse(service)!);
   }
 }

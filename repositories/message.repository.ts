@@ -1,11 +1,11 @@
-import MessageModel from "../models/message.model";
+import MessageModel, { IMessageDocument } from "../models/message.model";
 import { IMessage } from "../types/chat.types";
 import { BaseRepository } from "./base.repository";
-import { FilterQuery } from "mongoose";
 import { IMessageRepository } from "../interfaces/repositories/IMessageRepository";
+import { FilterQuery } from "mongoose";
 
 export class MessageRepository
-  extends BaseRepository<IMessage>
+  extends BaseRepository<IMessageDocument>
   implements IMessageRepository
 {
   constructor() {
@@ -26,14 +26,14 @@ export class MessageRepository
       messageType: "booking_card",
       content: "Booking created",
       read: false,
-    } as Partial<IMessage>);
+    } as unknown as Partial<IMessageDocument>) as unknown as IMessage;
   }
 
   async findLastByConversationId(conversationId: string): Promise<IMessage | null> {
     return this.model
-      .findOne({ conversationId } as FilterQuery<IMessage>)
-      .sort({ createdAt: -1 }) 
-      .exec();
+      .findOne({ conversationId } as FilterQuery<IMessageDocument>)
+      .sort({ createdAt: -1 })
+      .exec() as unknown as IMessage | null;
   }
 
   async countUnread(conversationId: string, userId: string): Promise<number> {
@@ -41,14 +41,14 @@ export class MessageRepository
       conversationId,
       senderId: { $ne: userId },
       read: false,
-    } as FilterQuery<IMessage>);
+    } as FilterQuery<IMessageDocument>);
   }
 
   async findByConversationId(conversationId: string): Promise<IMessage[]> {
     return this.model
-      .find({ conversationId } as FilterQuery<IMessage>)
+      .find({ conversationId } as FilterQuery<IMessageDocument>)
       .sort({ createdAt: 1 })
-      .exec();
+      .exec() as unknown as IMessage[];
   }
 
   async createTextMessage(data: {
@@ -64,15 +64,38 @@ export class MessageRepository
       senderId: data.senderId,
       senderRole: data.senderRole,
       content: data.content,
+      messageType: "text",
       read: false,
       delivered: false,
-    } as Partial<IMessage>);
+    } as unknown as Partial<IMessageDocument>) as unknown as IMessage;
+  }
+
+  async createImageMessage(data: {
+    conversationId: string;
+    bookingId?: string | null;
+    senderId: string;
+    senderRole: "user" | "provider";
+    imageUrl: string;
+    imagePublicId: string;
+  }): Promise<IMessage> {
+    return this.create({
+      conversationId: data.conversationId,
+      bookingId: data.bookingId ?? undefined,
+      senderId: data.senderId,
+      senderRole: data.senderRole,
+      messageType: "image",
+      content: "📷 Image",   
+      imageUrl: data.imageUrl,
+      imagePublicId: data.imagePublicId,
+      read: false,
+      delivered: false,
+    } as unknown as Partial<IMessageDocument>) as unknown as IMessage;
   }
 
   async markReadByConversation(conversationId: string, userId: string): Promise<void> {
     await this.model
       .updateMany(
-        { conversationId, senderId: { $ne: userId }, read: false } as FilterQuery<IMessage>,
+        { conversationId, senderId: { $ne: userId }, read: false } as FilterQuery<IMessageDocument>,
         { $set: { read: true, delivered: true } }
       )
       .exec();
@@ -86,7 +109,7 @@ export class MessageRepository
           conversationId: { $in: conversationIds },
           senderId: { $ne: userId },
           delivered: false,
-        } as FilterQuery<IMessage>,
+        } as FilterQuery<IMessageDocument>,
         { $set: { delivered: true } }
       )
       .exec();
@@ -99,27 +122,27 @@ export class MessageRepository
         conversationId: { $in: conversationIds },
         senderId: { $ne: userId },
         delivered: false,
-      } as FilterQuery<IMessage>)
+      } as FilterQuery<IMessageDocument>)
       .select("conversationId")
       .exec();
     return Array.from(new Set(messages.map((m) => m.conversationId.toString())));
   }
 
-  async softDelete(messageId: string, userId: string): Promise<IMessage | null> {
+  async softDeleteMessage(messageId: string, userId: string): Promise<IMessage | null> {
     const message = await this.model.findById(messageId).exec();
     if (!message || message.senderId.toString() !== userId) return null;
-    return this.update(messageId, { isDeleted: true, content: "This message was deleted" });
+    return this.update(messageId, { isDeleted: true, content: "This message was deleted" } as unknown as Partial<IMessageDocument>) as unknown as IMessage | null;
   }
 
   async findById(messageId: string): Promise<IMessage | null> {
-    return this.model.findById(messageId).exec();
+    return this.model.findById(messageId).exec() as unknown as IMessage | null;
   }
 
   async updateById(messageId: string, data: Partial<IMessage>): Promise<IMessage | null> {
-    return this.model.findByIdAndUpdate(messageId, data, { new: true }).exec();
+    return this.model.findByIdAndUpdate(messageId, data, { returnDocument: "after" }).exec() as unknown as IMessage | null;
   }
 
   async deleteByConversationId(conversationId: string): Promise<void> {
-    await this.model.deleteMany({ conversationId } as FilterQuery<IMessage>).exec();
+    await this.model.deleteMany({ conversationId } as FilterQuery<IMessageDocument>).exec();
   }
 }

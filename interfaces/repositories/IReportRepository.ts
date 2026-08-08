@@ -1,10 +1,11 @@
-import { IReport } from "../../models/report.model";
+import { IReport } from "../../types/report.types";
+import mongoose from "mongoose";
 
 export interface IReportRepository {
   create(data: Partial<IReport>): Promise<IReport>;
   findById(id: string): Promise<IReport | null>;
   findByReporterId(reporterId: string): Promise<IReport[]>;
-  findReports(filter?: any, page?: number, limit?: number): Promise<{ reports: IReport[]; total: number }>;
+  findReports(filter?: mongoose.FilterQuery<IReport>, page?: number, limit?: number): Promise<{ reports: IReport[]; total: number }>;
   update(id: string, data: Partial<IReport>): Promise<IReport | null>;
-  count(filter?: any): Promise<number>;
+  count(filter?: mongoose.FilterQuery<IReport>): Promise<number>;
 }

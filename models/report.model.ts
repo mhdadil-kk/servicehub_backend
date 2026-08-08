@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export interface IReport extends Document {
+export interface IReportDocument extends Document {
   reporterId: mongoose.Types.ObjectId;
   reportedId: mongoose.Types.ObjectId;
   bookingId?: mongoose.Types.ObjectId;
@@ -45,4 +45,4 @@ ReportSchema.index({ reporterId: 1 });
 ReportSchema.index({ reportedId: 1 });
 ReportSchema.index({ status: 1 });
 
-export default mongoose.model<IReport>("Report", ReportSchema);
+export default mongoose.model<IReportDocument>("Report", ReportSchema);

@@ -1,4 +1,5 @@
-import { ITransaction } from "../../models/transaction.model";
+import { ITransaction } from "../../types/transaction.types";
+import mongoose from "mongoose";
 
 export interface ITransactionRepository {
     sumByUserId(userId: string, type: "credit" | "debit", status?: "pending" | "success" | "failed"): Promise<number>;
@@ -12,6 +13,7 @@ export interface ITransactionRepository {
         status?: "pending" | "success" | "failed";
     }): Promise<ITransaction>;
     findByWalletId(walletId: string): Promise<ITransaction[]>;
-    getTotalRevenue(dateFilter?: any): Promise<number>;
-    getRevenueByMonth(dateFilter?: any): Promise<{ month: string; year: number; revenue: number }[]>;
+    getTotalRevenue(dateFilter?: mongoose.FilterQuery<ITransaction>): Promise<number>;
+    getRevenueByMonth(dateFilter?: mongoose.FilterQuery<ITransaction>): Promise<{ month: string; year: number; revenue: number }[]>;
 }
+

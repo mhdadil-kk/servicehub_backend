@@ -1,4 +1,4 @@
-import { IWallet } from "../models/wallet.model";
+import { IWallet } from "../types/wallet.types";
 
 export interface WalletResponseDTO {
   _id: string;
@@ -10,13 +10,13 @@ export interface WalletResponseDTO {
 }
 
 export class WalletMapper {
-  static toResponse(wallet: IWallet | any): WalletResponseDTO | null {
+  static toResponse(wallet: IWallet & { toObject?: () => IWallet }): WalletResponseDTO | null {
     if (!wallet) return null;
 
     const w = typeof wallet.toObject === 'function' ? wallet.toObject() : wallet;
 
     return {
-      _id: w._id.toString(),
+      _id: (w as IWallet & { _id?: { toString: () => string }; id?: string })._id?.toString() || (w as IWallet & { id?: string }).id || "",
       userId: w.userId.toString(),
       balance: w.balance,
       currency: w.currency || "INR",

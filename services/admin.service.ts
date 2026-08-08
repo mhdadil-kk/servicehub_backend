@@ -1,6 +1,5 @@
 import { IUserRepository } from "../interfaces/repositories/IUserRepository";
 import { IUser } from "../types/user.types";
-import mongoose from "mongoose";
 import { NotFoundError, BadRequestError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
 import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
@@ -8,7 +7,11 @@ import { IBookingRepository } from "../interfaces/repositories/IBookingRepositor
 import { ITransactionRepository } from "../interfaces/repositories/ITransactionRepository";
 import { IReportRepository } from "../interfaces/repositories/IReportRepository";
 import { IServiceRepository } from "../interfaces/repositories/IServiceRepository";
-import { IAdminService } from "../interfaces/services/IAdminService";
+import { AdminDashboardStats, IAdminService } from "../interfaces/services/IAdminService";
+import { IService } from "../types/service.types";
+import { IProviderProfile } from "../types/providerProfile.types";
+import { IBooking } from "../types/booking.types";
+import { FilterQuery } from "mongoose";
 
 export class AdminService implements IAdminService {
   constructor(
@@ -21,7 +24,7 @@ export class AdminService implements IAdminService {
   ) {}
 
   async getAllUsers(search?: string, status?: string, sort?: string, page: number = 1, limit: number = 10): Promise<{ users: IUser[], total: number }> {
-    const filter: any = { role: "user" };
+    const filter: FilterQuery<IUser> = { role: "user" };
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -31,22 +34,35 @@ export class AdminService implements IAdminService {
     if (status === "active") filter.isDeleted = { $ne: true };
     if (status === "blocked") filter.isDeleted = true;
 
-    let sortQuery: Record<string, number> = { created_at: -1 };
+    let sortQuery: Record<string, 1 | -1> = { created_at: -1 };
     if (sort === "oldest") sortQuery = { created_at: 1 };
     if (sort === "name_asc") sortQuery = { name: 1 };
     if (sort === "name_desc") sortQuery = { name: -1 };
 
     const skip = (page - 1) * limit;
-    const [users, total] = await Promise.all([
+    const [rawUsers, total] = await Promise.all([
       this._userRepository.findAll(filter, true, sortQuery, limit, skip),
       this._userRepository.count(filter, true)
+      
     ]);
 
-    return { users, total };
+    const userWithCounts = await Promise.all(
+      rawUsers.map(async (user: IUser & { toObject?: () => IUser; _id?: { toString: () => string } })=> {
+       const userIdString = user._id ? user._id.toString() : user.id;
+       const bookingCount = await this._bookingRepository.countByUserId(userIdString)
+        
+       return {
+        ...(user.toObject ? user.toObject() : user),
+        totalBookings: bookingCount
+       } as IUser;
+      })
+    )
+
+    return { users: userWithCounts, total };
   }
 
   async getProviders(search?: string, status?: string, sort?: string, page: number = 1, limit: number = 10): Promise<{ providers: IUser[], total: number }> {
-    const filter: any = { role: "provider" };
+    const filter: FilterQuery<IUser> = { role: "provider" };
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -59,7 +75,7 @@ export class AdminService implements IAdminService {
     if (status === "approved") filter.status = "approved";
     if (status === "rejected") filter.status = "rejected";
 
-    let sortQuery: Record<string, number> = { created_at: -1 };
+    let sortQuery: Record<string, 1 | -1> = { created_at: -1 };
     if (sort === "oldest") sortQuery = { created_at: 1 };
     if (sort === "name_asc") sortQuery = { name: 1 };
     if (sort === "name_desc") sortQuery = { name: -1 };
@@ -81,7 +97,7 @@ export class AdminService implements IAdminService {
     const user = await this._userRepository.findById(id, true);
     if (!user) throw new NotFoundError(ERROR_MESSAGES.USER_NOT_FOUND);
 
-    const updatedUser = await this._userRepository.update(id, { status });
+    const updatedUser = await this._userRepository.update(id, { status } as Partial<IUser>);
     if (!updatedUser) throw new NotFoundError("User could not be updated");
 
     return updatedUser;
@@ -91,7 +107,7 @@ export class AdminService implements IAdminService {
     const user = await this._userRepository.findById(id, true);
     if (!user) throw new NotFoundError(ERROR_MESSAGES.USER_NOT_FOUND);
 
-    const updatedUser = await this._userRepository.update(id, { isDeleted: false });
+    const updatedUser = await this._userRepository.update(id, { isDeleted: false } as Partial<IUser>);
     if (!updatedUser) throw new NotFoundError("User could not be updated");
 
     return updatedUser;
@@ -104,7 +120,7 @@ export class AdminService implements IAdminService {
     await this._userRepository.softDelete(id);
   }
 
-  async addService(data: any): Promise<any> {
+  async addService(data: Partial<IService>): Promise<IService> {
     if (!data.name || !data.description) {
       throw new BadRequestError("Name and description are required");
     }
@@ -112,12 +128,12 @@ export class AdminService implements IAdminService {
     const existingService = await this._serviceRepository.findOne({ name: data.name }, true);
     
     if (existingService) {
-      if ((existingService as any).isDeleted) {
-        return await this._serviceRepository.update(existingService._id.toString(), {
+      if (existingService.isDeleted) {
+        return await this._serviceRepository.update((existingService as IService & { _id?: { toString: () => string } })._id?.toString() || existingService.id, {
           description: data.description,
           isDeleted: false,
           isActive: true
-        }) as any;
+        } as Partial<IService>) as IService;
       }
       throw new BadRequestError("A service with this name already exists");
     }
@@ -132,8 +148,8 @@ export class AdminService implements IAdminService {
     }
   }
 
-  async getAllServices(): Promise<any[]> {
-    return await this._serviceRepository.findAll();
+  async getAllServices(): Promise<IService[]> {
+    return (await this._serviceRepository.findAll()) as unknown as IService[];
   }
 
   async deleteService(id: string): Promise<void> {
@@ -142,11 +158,11 @@ export class AdminService implements IAdminService {
     await this._serviceRepository.softDelete(id);
   }
 
-  async getPendingProviders(): Promise<any[]> {
+  async getPendingProviders(): Promise<IProviderProfile[]> {
     return await this._providerProfileRepository.findPendingProviders();
   }
 
-  async getProviderDetail(userId: string): Promise<any> {
+  async getProviderDetail(userId: string): Promise<IProviderProfile | null> {
     const profile = await this._providerProfileRepository.findByUserIdWithDetails(userId);
     if (!profile) throw new NotFoundError("Provider profile not found");
     return profile;
@@ -156,7 +172,7 @@ export class AdminService implements IAdminService {
     const profile = await this._providerProfileRepository.findByUserId(userId);
     if (!profile) throw new NotFoundError("Provider profile not found");
 
-    const updateData: any = { onboardingStatus: status };
+    const updateData: Partial<IProviderProfile> = { onboardingStatus: status };
     if (status === "rejected") {
       updateData.rejectionReason = remarks || "No reason provided";
     } else {
@@ -166,13 +182,13 @@ export class AdminService implements IAdminService {
     await this._providerProfileRepository.updateByUserId(userId, updateData);
 
     if (status === "approved") {
-      await this._userRepository.updateById(userId, { is_verified: true, status: "active" });
+      await this._userRepository.updateById(userId, { is_verified: true, status: "approved" } as Partial<IUser>);
     } else {
-      await this._userRepository.updateById(userId, { status: "rejected" });
+      await this._userRepository.updateById(userId, { status: "rejected" } as Partial<IUser>);
     }
   }
 
-  async getDashboardStats(timeRange?: string): Promise<any> {
+  async getDashboardStats(timeRange?: string): Promise<AdminDashboardStats> {
     const now = new Date();
     let startDate = new Date(0); 
 
@@ -214,7 +230,7 @@ export class AdminService implements IAdminService {
     const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
     const growthMap = new Map<string, { label: string; users: number; providers: number }>();
-    userGrowthData.forEach((d: any) => {
+    userGrowthData.forEach((d: { _id: { year: number; month: number; day: number; role: string }, count: number }) => {
       let label = `${d._id.year}`;
       if (timeRange === "year") {
         label = `${MONTH_NAMES[d._id.month - 1]} ${d._id.year}`;
@@ -250,9 +266,9 @@ export class AdminService implements IAdminService {
     };
   }
 
-  async getAllBookings(search?: string, status?: string, sort?: string, page: number = 1, limit: number = 10): Promise<{ bookings: any[], total: number }> {
+  async getAllBookings(search?: string, status?: string, sort?: string, page: number = 1, limit: number = 10): Promise<{ bookings: IBooking[], total: number }> {
     const skip = (page - 1) * limit;
-    const query: any = {};
+    const query: FilterQuery<IBooking> = {};
 
     if (status) {
       query.status = status;
@@ -268,10 +284,10 @@ export class AdminService implements IAdminService {
         { userId: { $in: userIds } },
         { providerId: { $in: providerProfileIds } },
         { _id: search.length === 24 ? search : undefined } 
-      ].filter(Boolean);
+      ].filter(Boolean) as FilterQuery<IBooking>["$or"];
     }
 
-    let sortQuery: any = { createdAt: -1 };
+    let sortQuery: Record<string, 1 | -1> = { createdAt: -1 };
     if (sort === "oldest") sortQuery = { createdAt: 1 };
     if (sort === "amount_high") sortQuery = { totalAmount: -1 };
     if (sort === "amount_low") sortQuery = { totalAmount: 1 };
@@ -281,13 +297,13 @@ export class AdminService implements IAdminService {
       this._bookingRepository.countByFilter(query),
     ]);
 
-    return { bookings, total };
+    return { bookings: bookings as unknown as IBooking[], total };
   }
 
-  async getBookingById(id: string): Promise<any> {
+  async getBookingById(id: string): Promise<IBooking | null> {
     const booking = await this._bookingRepository.findByIdPopulated(id);
      if (!booking) throw new NotFoundError("Booking not found");
-    return booking;
+    return booking as unknown as IBooking;
   }
 
   async getRevenueReport(timeRange?: string): Promise<{
@@ -336,4 +352,7 @@ export class AdminService implements IAdminService {
       platformFeeCollected: totalRevenue,
     };
   }
+
+
+
 }

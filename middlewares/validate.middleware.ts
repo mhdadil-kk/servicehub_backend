@@ -1,26 +1,27 @@
 import { Request, Response, NextFunction } from "express";
-import { ZodSchema, ZodError } from "zod";
-import { BadRequestError } from "../utils/error";
+import { AnyZodObject, ZodError } from "zod";
+import { HttpStatusCode } from "../types/http";
+import { createErrorResponse } from "../types/response";
 
-
-export const validate = (schema: AnyZodObject) => 
-  async (req: Request, res: Response, next: NextFunction) => {
+export const validate =
+  (schema: AnyZodObject) =>
+  (req: Request, res: Response, next: NextFunction) => {
     try {
-      await schema.parseAsync({
+      schema.parse({
         body: req.body,
         query: req.query,
         params: req.params,
       });
-      return next();
+      next();
     } catch (error) {
       if (error instanceof ZodError) {
-        
-        const message = error.issues?.map(e => {
-          const path = e.path.filter(p => p !== "body").join(".");
-          return `${path}: ${e.message}`;
-        }).join(", ") || "Validation failed";
-        return next(new BadRequestError(message));
+        return res.status(HttpStatusCode.BAD_REQUEST).json(
+          createErrorResponse(
+            error.errors.map((e) => e.message).join(", "),
+            HttpStatusCode.BAD_REQUEST
+          )
+        );
       }
-      return next(error);
+      next(error);
     }
   };

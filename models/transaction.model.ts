@@ -1,16 +1,18 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export interface ITransaction extends Document {
+export interface ITransactionDocument extends Document {
   walletId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   type: "credit" | "debit";
   amount: number;
   description: string;
-  referenceId?: mongoose.Types.ObjectId; 
+  referenceId?: string;
   status: "pending" | "success" | "failed";
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const TransactionSchema = new Schema<ITransaction>(
+const TransactionSchema = new Schema<ITransactionDocument>(
   {
     walletId: { type: Schema.Types.ObjectId, ref: "Wallet", required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -23,4 +25,4 @@ const TransactionSchema = new Schema<ITransaction>(
   { timestamps: true }
 );
 
-export default mongoose.model<ITransaction>("Transaction", TransactionSchema);
+export default mongoose.model<ITransactionDocument>("Transaction", TransactionSchema);

@@ -1,166 +1,129 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import { IProviderService } from "../interfaces/services/IProviderService";
 import { HttpStatusCode } from "../types/http";
 import { createSuccessResponse } from "../types/response";
 import { SUCCESS_MESSAGES } from "../constants/messages";
 import { ProviderProfileMapper } from "../mappers/providerProfile.mapper";
 import { ProviderAvailabilityMapper } from "../mappers/providerAvailability.mapper";
+import { asyncHandler } from "../utils/async-handler";
+
 
 export class ProviderController {
-  private  _providerService: IProviderService;
-  constructor(providerService: IProviderService) {
-    this._providerService = providerService;
-  }
+  constructor(private _providerService: IProviderService) {}
 
-  updateProfile = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const { bio, name, phone } = req.body;
-      const profilePhoto = req.file?.path;
+  updateProfile = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const { bio, name, phone } = req.body;
+    const profilePhoto = req.file?.path;
 
-      const profile = await this._providerService.updateProfile(userId, {
-        bio,
-        name,
-        phone,
-        profilePhoto,
-      });
+    const profile = await this._providerService.updateProfile(userId, {
+      bio,
+      name,
+      phone,
+      profilePhoto,
+    });
 
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_UPDATED)
+    res.status(HttpStatusCode.OK).json(
+      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_UPDATED)
+    );
+  });
+
+  updateLocation = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const { address, latitude, longitude, serviceRadius } = req.body;
+
+    const profile = await this._providerService.updateLocation(userId, {
+      address,
+      latitude: latitude != null ? Number(latitude) : undefined,
+      longitude: longitude != null ? Number(longitude) : undefined,
+      serviceRadius: serviceRadius != null ? Number(serviceRadius) : undefined,
+    });
+
+    res.status(HttpStatusCode.OK).json(
+      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.LOCATION_UPDATED)
+    );
+  });
+
+  updateServiceDetails = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const { serviceId, hourlyRate } = req.body;
+
+    const profile = await this._providerService.updateServiceDetails(userId, {
+      serviceId,
+      hourlyRate: Number(hourlyRate),
+    });
+
+    res.status(HttpStatusCode.OK).json(
+      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.SERVICE_DETAILS_UPDATED)
+    );
+  });
+
+  uploadVerificationDocs = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const documents: { docType: string; url: string }[] = [];
+
+    if (files?.identity) {
+      files.identity.forEach((file) =>
+        documents.push({ docType: "identity", url: file.path })
       );
-    } catch (error) {
-      next(error);
     }
-  };
 
-  updateLocation = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const { address, latitude, longitude, serviceRadius } = req.body;
-
-      const profile = await this._providerService.updateLocation(userId, {
-        address,
-        latitude: latitude != null ? Number(latitude) : undefined,
-        longitude: longitude != null ? Number(longitude) : undefined,
-        serviceRadius: serviceRadius != null ? Number(serviceRadius) : undefined,
-      });
-
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.LOCATION_UPDATED)
+    if (files?.license) {
+      files.license.forEach((file) =>
+        documents.push({ docType: "license", url: file.path })
       );
-    } catch (error) {
-      next(error);
     }
-  };
 
-  updateServiceDetails = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const { serviceId, hourlyRate } = req.body;
+    const profile = await this._providerService.uploadVerificationDocs(userId, documents);
 
-      const profile = await this._providerService.updateServiceDetails(userId, {
-        serviceId,
-        hourlyRate: Number(hourlyRate),
-      });
+    res.status(HttpStatusCode.OK).json(
+      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.DOCUMENTS_UPLOADED)
+    );
+  });
 
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.SERVICE_DETAILS_UPDATED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  updateBankDetails = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const profile = await this._providerService.updateBankDetails(userId, req.body);
 
-  uploadVerificationDocs = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      const documents: { docType: string; url: string }[] = [];
+    res.status(HttpStatusCode.OK).json(
+      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.BANK_DETAILS_UPDATED)
+    );
+  });
 
-      if (files?.identity) {
-        files.identity.forEach((file) =>
-          documents.push({ docType: "identity", url: file.path })
-        );
-      }
+  resetForReapply = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const profile = await this._providerService.resetForReapply(userId);
 
-      if (files?.license) {
-        files.license.forEach((file) =>
-          documents.push({ docType: "license", url: file.path })
-        );
-      }
+    res.status(HttpStatusCode.OK).json(
+      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_RESET)
+    );
+  });
 
-      const profile = await this._providerService.uploadVerificationDocs(userId, documents);
+  getProfile = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const profile = await this._providerService.getProfile(userId);
 
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.DOCUMENTS_UPLOADED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+    res.status(HttpStatusCode.OK).json(
+      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_FETCHED)
+    );
+  });
 
-  updateBankDetails = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const profile = await this._providerService.updateBankDetails(userId, req.body);
+  getAvailability = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const availability = await this._providerService.getAvailability(userId);
 
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.BANK_DETAILS_UPDATED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+    res.status(HttpStatusCode.OK).json(
+      createSuccessResponse(ProviderAvailabilityMapper.toResponse(availability), SUCCESS_MESSAGES.AVAILABILITY_FETCHED)
+    );
+  });
 
-  resetForReapply = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const profile = await this._providerService.resetForReapply(userId);
+  updateAvailability = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const availability = await this._providerService.updateAvailability(userId, req.body);
 
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_RESET)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  getProfile = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const profile = await this._providerService.getProfile(userId);
-
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_FETCHED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  getAvailability = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const availability = await this._providerService.getAvailability(userId);
-
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(ProviderAvailabilityMapper.toResponse(availability), SUCCESS_MESSAGES.AVAILABILITY_FETCHED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  updateAvailability = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const availability = await this._providerService.updateAvailability(userId, req.body);
-
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(ProviderAvailabilityMapper.toResponse(availability), SUCCESS_MESSAGES.AVAILABILITY_UPDATED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+    res.status(HttpStatusCode.OK).json(
+      createSuccessResponse(ProviderAvailabilityMapper.toResponse(availability), SUCCESS_MESSAGES.AVAILABILITY_UPDATED)
+    );
+  });
 }

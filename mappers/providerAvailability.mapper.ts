@@ -41,14 +41,14 @@ export interface ProviderAvailabilityResponseDTO {
 }
 
 export class ProviderAvailabilityMapper {
-  static toResponse(availability: IProviderAvailability | any): ProviderAvailabilityResponseDTO | null {
+  static toResponse(availability: IProviderAvailability & { toObject?: () => IProviderAvailability; _id?: { toString: () => string }; providerId?: { toString: () => string } }): ProviderAvailabilityResponseDTO | null {
     if (!availability) return null;
 
     const a = typeof availability.toObject === 'function' ? availability.toObject() : availability;
 
     return {
-      _id: a._id.toString(),
-      providerId: a.providerId.toString(),
+      _id: (a as IProviderAvailability & { _id?: { toString: () => string }, id?: string })._id?.toString() || (a as IProviderAvailability & { id?: string }).id || "",
+      providerId: (a.providerId as unknown as { toString: () => string }).toString(),
       startDate: a.startDate,
       endDate: a.endDate,
       weeklySchedule: a.weeklySchedule || {

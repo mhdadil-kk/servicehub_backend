@@ -1,8 +1,9 @@
+import { FilterQuery, SortOrder } from "mongoose";
 import bookingModel from "../models/booking.model";
 import { IBooking } from "../types/booking.types";
 import { BaseRepository } from "./base.repository";
-import { FilterQuery } from "mongoose";
-import { IBookingRepository, AvailableSlot } from "../interfaces/repositories/IBookingRepository";
+
+import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
 
 export class BookingRepository
   extends BaseRepository<IBooking>
@@ -79,7 +80,7 @@ export class BookingRepository
     return this.model.findOneAndUpdate(
       { _id: id, status: "awaiting_payment" },
       { paymentStatus: "paid", status: "confirmed" },
-      { new: true }
+      { returnDocument: "after" }
     ).exec();
   }
 
@@ -87,7 +88,7 @@ export class BookingRepository
     return this.model.findOneAndUpdate(
       { _id: id, status: "completed_pending_payment" },
       { paymentStatus: "fully_paid", status: "completed" },
-      { new: true }
+      { returnDocument: "after" }
     ).exec();
   }
 
@@ -165,10 +166,10 @@ export class BookingRepository
   }
 
   async updateStatus(bookingId: string, data: Partial<IBooking>): Promise<IBooking | null> {
-    return this.model.findByIdAndUpdate(bookingId, { $set: data }, { new: true }).exec();
+    return this.model.findByIdAndUpdate(bookingId, { $set: data }, { returnDocument: "after" }).exec();
   }
 
-  async findAllWithFilters(query: any, sort: any, skip: number, limit: number): Promise<IBooking[]> {
+  async findAllWithFilters(query: FilterQuery<IBooking>, sort: Record<string, SortOrder>, skip: number, limit: number): Promise<IBooking[]> {
     return this.model.find(query)
       .populate("userId", "name email phone profilePhoto")
       .populate({
@@ -185,13 +186,13 @@ export class BookingRepository
       .exec();
   }
 
-  async countByFilter(query: any): Promise<number> {
+  async countByFilter(query: FilterQuery<IBooking>): Promise<number> {
     return this.model.countDocuments(query).exec();
   }
 
-  async getServiceBookingTrends(dateFilter: any = {}): Promise<any[]> {
+  async getServiceBookingTrends(dateFilter: FilterQuery<IBooking> = {}): Promise<{ _id: string; count: number }[]> {
     return this.model.aggregate([
-      { $match: { status: "completed", ...dateFilter } },
+      { $match: { status: { $in: ["completed", "in_progress", "confirmed"] }, ...dateFilter } },
       {
         $lookup: {
           from: "services",
@@ -200,10 +201,14 @@ export class BookingRepository
           as: "service"
         }
       },
-      { $unwind: "$service" },
       {
         $group: {
-          _id: "$service.name",
+          _id: {
+            $ifNull: [
+              { $arrayElemAt: ["$service.name", 0] },
+              "Unknown Service"
+            ]
+          },
           count: { $sum: 1 }
         }
       },
@@ -212,7 +217,7 @@ export class BookingRepository
     ]);
   }
 
-  async findByIdPopulated(id: string): Promise<any> {
+  async findByIdPopulated(id: string): Promise<IBooking | null> {
     return this.model.findById(id)
       .populate("userId", "name email phone profilePhoto")
       .populate({
@@ -228,7 +233,7 @@ export class BookingRepository
   }
 
 
-  async getPlatformRevenueByMonth(dateFilter: any = {}): Promise<{ month: string; year: number; count: number }[]> {
+  async getPlatformRevenueByMonth(dateFilter: FilterQuery<IBooking> = {}): Promise<{ month: string; year: number; count: number }[]> {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const result = await this.model.aggregate([
       {
@@ -255,4 +260,6 @@ export class BookingRepository
       count: r.count,
     }));
   }
+
+ 
 }

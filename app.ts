@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes";
 import adminRoutes from "./routes/admin.routes";
@@ -11,7 +11,6 @@ import chatRoutes from "./routes/chat.routes";
 import paymentRoutes from "./routes/payment.routes";
 import reviewRoutes from "./routes/review.routes";
 import { globalErrorHandler } from "./middlewares/error.middleware";
-import { logger } from "./utils/logger";
 
 const app = express();
 
@@ -29,11 +28,9 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-app.use((req: Request, res: Response, next: NextFunction) => {
-  logger.info(`${req.method} ${req.url}`);
-  next();
-});
+import { requestLogger } from "./middlewares/request-logger.middleware";
 
+app.use(requestLogger);
 
 import notificationRoutes from "./routes/notification.routes";
 import walletRoutes from "./routes/wallet.routes";

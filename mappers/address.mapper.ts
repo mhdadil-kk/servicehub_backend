@@ -1,4 +1,4 @@
-import { IAddress } from "../models/address.model";
+import { IAddress } from "../types/address.types";
 
 export interface AddressResponseDTO {
   _id: string;
@@ -13,13 +13,13 @@ export interface AddressResponseDTO {
 }
 
 export class AddressMapper {
-  static toResponse(address: IAddress | any): AddressResponseDTO | null {
+  static toResponse(address: IAddress & { toObject?: () => IAddress }): AddressResponseDTO | null {
     if (!address) return null;
 
     const a = typeof address.toObject === 'function' ? address.toObject() : address;
 
     return {
-      _id: a._id.toString(),
+      _id: (a as IAddress & { _id?: { toString: () => string }; id?: string })._id?.toString() || (a as IAddress & { id?: string }).id || "",
       userId: a.userId.toString(),
       label: a.label,
       fullAddress: a.fullAddress,
@@ -31,7 +31,7 @@ export class AddressMapper {
     };
   }
 
-  static toArrayResponse(addresses: any[]): AddressResponseDTO[] {
+  static toArrayResponse(addresses: (IAddress & { toObject?: () => IAddress })[]): AddressResponseDTO[] {
     return addresses.map(address => this.toResponse(address)!);
   }
 }

@@ -1,7 +1,8 @@
+import mongoose, { FilterQuery } from "mongoose";
 import providerProfileModel from "../models/providerProfile.model";
 import { IProviderProfile } from "../types/providerProfile.types";
 import { BaseRepository } from "./base.repository";
-import { FilterQuery } from "mongoose";
+
 import { FindApprovedProvidersOptions, IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
 
 export class ProviderProfileRepository
@@ -71,7 +72,7 @@ export class ProviderProfileRepository
   async findOrCreateByUserId(userId: string): Promise<IProviderProfile> {
     let profile = await this.findByUserId(userId);
     if (!profile) {
-      profile = await this.create({ userId } as Partial<IProviderProfile>);
+      profile = await this.create({ userId } as unknown as Partial<IProviderProfile>);
     }
     return profile;
   }
@@ -139,19 +140,20 @@ export class ProviderProfileRepository
     return { providers, total };
   }
 
-  async findPendingProviders(dateFilter: any = {}): Promise<IProviderProfile[]> {
+  async findPendingProviders(dateFilter: FilterQuery<IProviderProfile> = {}): Promise<IProviderProfile[]> {
     return this.model.find({ onboardingStatus: "in_review", ...dateFilter })
       .populate("userId", "name email phone")
       .populate("serviceId", "name")
       .exec();
   }
 
-  async countByStatus(status: string, dateFilter: any = {}): Promise<number> {
+  async countByStatus(status: string, dateFilter: FilterQuery<IProviderProfile> = {}): Promise<number> {
     return this.model.countDocuments({ onboardingStatus: status, ...dateFilter }).exec();
   }
 
   async findIdsByUserIds(userIds: string[]): Promise<string[]> {
     const profiles = await this.model.find({ userId: { $in: userIds } }).select("_id").exec();
-    return profiles.map((p: any) => p._id.toString());
+    return profiles.map((p: { _id: mongoose.Types.ObjectId }) => p._id.toString());
   }
 }
+

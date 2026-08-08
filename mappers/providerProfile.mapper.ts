@@ -1,5 +1,5 @@
-import { IProviderProfile } from "../types/providerProfile.types";
-import mongoose from "mongoose";
+import { IProviderDocument, IProviderProfile } from "../types/providerProfile.types";
+import { generateSignedUrl, extractPublicId } from "../utils/cloudinary.utils";
 
 export interface ProviderDocumentDTO {
   docType: string;
@@ -8,10 +8,10 @@ export interface ProviderDocumentDTO {
 
 export interface ProviderProfileResponseDTO {
   _id: string;
-  userId: string;
+  userId: string | Record<string, unknown>;
   bio?: string;
   profilePhoto?: string;
-  serviceId?: string;
+  serviceId?: string | Record<string, unknown>;
   hourlyRate?: number;
   serviceRadius?: number;
   address?: string;
@@ -20,7 +20,7 @@ export interface ProviderProfileResponseDTO {
     coordinates: [number, number];
   };
   documents: ProviderDocumentDTO[];
-  bankDetails?: any;
+  bankDetails?: Record<string, unknown>;
   onboardingStep: number;
   onboardingStatus: string;
   rejectionReason?: string;
@@ -32,10 +32,10 @@ export interface ProviderProfileResponseDTO {
 
 export interface PublicProviderProfileDTO {
   _id: string;
-  userId: any;
+  userId: string | Record<string, unknown>;
   bio?: string;
   profilePhoto?: string;
-  serviceId?: string;
+  serviceId?: string | Record<string, unknown>;
   hourlyRate?: number;
   serviceRadius?: number;
   address?: string;
@@ -45,29 +45,33 @@ export interface PublicProviderProfileDTO {
   };
   averageRating?: number;
   totalReviews?: number;
-  user?: any;
-  service?: any;
+  user?: string;
+  service?: string;
 }
 
 export class ProviderProfileMapper {
-  static toResponse(profile: IProviderProfile | any): ProviderProfileResponseDTO | any {
+  static toResponse(profile: IProviderProfile & { toObject?: () => IProviderProfile }): ProviderProfileResponseDTO | null {
     if (!profile) return null;
 
     const p = typeof profile.toObject === 'function' ? profile.toObject() : profile;
 
-    const result: any = {
-      _id: p._id.toString(),
+    const result: ProviderProfileResponseDTO = {
+      _id: (p as IProviderProfile & { _id?: { toString: () => string }; id?: string })._id?.toString() || (p as IProviderProfile & { id?: string }).id || "",
+      userId: p.userId as unknown as string,
       bio: p.bio,
       profilePhoto: p.profilePhoto,
       hourlyRate: p.hourlyRate,
       serviceRadius: p.serviceRadius,
       address: p.address,
       location: p.location,
-      bankDetails: p.bankDetails,
-      documents: p.documents ? p.documents.map((doc: any) => ({
-        docType: doc.docType,
-        url: doc.url,
-      })) : [],
+      bankDetails: p.bankDetails as unknown as Record<string, unknown>,
+      documents: p.documents ? p.documents.map((doc: IProviderDocument) => {
+        const publicId = extractPublicId(doc.url);
+        return {
+          docType: doc.docType,
+          url: publicId ? generateSignedUrl(publicId, 3600) : doc.url,
+        };
+      }) : [],
       onboardingStep: p.onboardingStep,
       onboardingStatus: p.onboardingStatus,
       rejectionReason: p.rejectionReason,
@@ -78,37 +82,40 @@ export class ProviderProfileMapper {
     };
 
     if (p.userId && typeof p.userId === 'object' && ('name' in p.userId || 'email' in p.userId || '_id' in p.userId)) {
+      const u = p.userId as unknown as { _id?: { toString: () => string }; name?: string; email?: string; phone?: string; profilePhoto?: string };
       result.userId = {
-        _id: p.userId._id?.toString() || p.userId.toString(),
-        name: p.userId.name || "",
-        email: p.userId.email || "",
-        phone: p.userId.phone || "",
-        profilePhoto: p.userId.profilePhoto,
+        _id: u._id?.toString() || (u as unknown as { toString: () => string }).toString(),
+        name: u.name || "",
+        email: u.email || "",
+        phone: u.phone || "",
+        profilePhoto: u.profilePhoto,
       };
     } else {
-      result.userId = p.userId?.toString();
+      result.userId = (p.userId as unknown as { toString: () => string })?.toString();
     }
 
     if (p.serviceId && typeof p.serviceId === 'object' && ('name' in p.serviceId || 'description' in p.serviceId || '_id' in p.serviceId)) {
+      const s = p.serviceId as unknown as { _id?: { toString: () => string }; name?: string; description?: string };
       result.serviceId = {
-        _id: p.serviceId._id?.toString() || p.serviceId.toString(),
-        name: p.serviceId.name,
-        description: p.serviceId.description,
+        _id: s._id?.toString() || (s as unknown as { toString: () => string }).toString(),
+        name: s.name,
+        description: s.description,
       };
     } else {
-      result.serviceId = p.serviceId?.toString();
+      result.serviceId = (p.serviceId as unknown as { toString: () => string })?.toString();
     }
 
     return result;
   }
 
-  static toPublicResponse(profile: IProviderProfile | any): PublicProviderProfileDTO | any {
+  static toPublicResponse(profile: IProviderProfile & { toObject?: () => IProviderProfile }): PublicProviderProfileDTO | null {
     if (!profile) return null;
 
     const p = typeof profile.toObject === 'function' ? profile.toObject() : profile;
     
-    const result: any = {
-      _id: p._id.toString(),
+    const result: PublicProviderProfileDTO = {
+      _id: (p as IProviderProfile & { _id?: { toString: () => string }; id?: string })._id?.toString() || (p as IProviderProfile & { id?: string }).id || "",
+      userId: p.userId as unknown as string,
       bio: p.bio,
       profilePhoto: p.profilePhoto,
       hourlyRate: p.hourlyRate,
@@ -120,31 +127,33 @@ export class ProviderProfileMapper {
     };
 
     if (p.userId && typeof p.userId === 'object' && ('name' in p.userId || 'email' in p.userId || '_id' in p.userId)) {
+      const u = p.userId as unknown as { _id?: { toString: () => string }; name?: string; email?: string; phone?: string; profilePhoto?: string };
       result.userId = {
-        _id: p.userId._id?.toString() || p.userId.toString(),
-        name: p.userId.name || "",
-        email: p.userId.email || "",
-        phone: p.userId.phone || "",
-        profilePhoto: p.userId.profilePhoto,
+        _id: u._id?.toString() || (u as unknown as { toString: () => string }).toString(),
+        name: u.name || "",
+        email: u.email || "",
+        phone: u.phone || "",
+        profilePhoto: u.profilePhoto,
       };
     } else {
-      result.userId = p.userId?.toString();
+      result.userId = (p.userId as unknown as { toString: () => string })?.toString();
     }
 
     if (p.serviceId && typeof p.serviceId === 'object' && ('name' in p.serviceId || 'description' in p.serviceId || '_id' in p.serviceId)) {
+      const s = p.serviceId as unknown as { _id?: { toString: () => string }; name?: string; description?: string };
       result.serviceId = {
-        _id: p.serviceId._id?.toString() || p.serviceId.toString(),
-        name: p.serviceId.name,
-        description: p.serviceId.description,
+        _id: s._id?.toString() || (s as unknown as { toString: () => string }).toString(),
+        name: s.name,
+        description: s.description,
       };
     } else {
-      result.serviceId = p.serviceId?.toString();
+      result.serviceId = (p.serviceId as unknown as { toString: () => string })?.toString();
     }
 
     return result;
   }
 
-  static toArrayResponse(profiles: any[], isPublic: boolean = false): (ProviderProfileResponseDTO | PublicProviderProfileDTO)[] {
+  static toArrayResponse(profiles: (IProviderProfile & { toObject?: () => IProviderProfile })[], isPublic: boolean = false): (ProviderProfileResponseDTO | PublicProviderProfileDTO)[] {
     return profiles.map(p => isPublic ? this.toPublicResponse(p)! : this.toResponse(p)!);
   }
 }

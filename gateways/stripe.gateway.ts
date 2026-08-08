@@ -1,15 +1,17 @@
 import Stripe from "stripe";
-import { CheckoutSessionResult,CreateCheckoutParams,IPaymentGateway,} from "./payment.gateway";
+import { CheckoutSessionResult, CreateCheckoutParams, IPaymentGateway } from "./payment.gateway";
 import { InternalServerError } from "../utils/error";
 
 export class StripePaymentGateway implements IPaymentGateway {
-  private  stripe: Stripe;
+  private stripe: Stripe;
 
   constructor(secretKey: string) {
     if (!secretKey) {
       throw new InternalServerError("STRIPE_SECRET_KEY is not configured");
     }
-    this.stripe = new Stripe(secretKey, { apiVersion: "2024-04-10" });
+    this.stripe = new Stripe(secretKey, { 
+      apiVersion: "2024-04-10" as Stripe.StripeConfig["apiVersion"] 
+    });
   }
 
   async createCheckoutSession(params: CreateCheckoutParams): Promise<CheckoutSessionResult> {

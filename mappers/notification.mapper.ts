@@ -13,13 +13,13 @@ export interface NotificationResponseDTO {
 }
 
 export class NotificationMapper {
-  static toResponse(notification: INotification | any): NotificationResponseDTO | null {
+  static toResponse(notification: INotification & { toObject?: () => INotification }): NotificationResponseDTO | null {
     if (!notification) return null;
 
     const n = typeof notification.toObject === 'function' ? notification.toObject() : notification;
 
     return {
-      _id: n._id.toString(),
+      _id: (n as INotification & { _id?: { toString: () => string }; id?: string })._id?.toString() || (n as INotification & { id?: string }).id || "",
       userId: n.userId.toString(),
       title: n.title,
       message: n.message,
@@ -31,7 +31,7 @@ export class NotificationMapper {
     };
   }
 
-  static toArrayResponse(notifications: any[]): NotificationResponseDTO[] {
+  static toArrayResponse(notifications: (INotification & { toObject?: () => INotification })[]): NotificationResponseDTO[] {
     return notifications.map(notif => this.toResponse(notif)!);
   }
 }

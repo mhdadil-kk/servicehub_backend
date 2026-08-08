@@ -1,248 +1,127 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import { IBookingService } from "../interfaces/services/IBookingService";
-import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
-import { SUCCESS_MESSAGES } from "../constants/messages";
+import { createSuccessResponse } from "../types/response";
+import { asyncHandler } from "../utils/async-handler";
 import { BookingMapper } from "../mappers/booking.mapper";
+import { BadRequestError } from "../utils/error";
+
 
 export class BookingController {
-  private  _bookingService: IBookingService;
-  constructor(bookingService: IBookingService) {
-    this._bookingService = bookingService;
-  }
+  constructor(private _bookingService: IBookingService) {}
 
-  getAvailableSlots = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { providerId, date } = req.query;
-      const slots = await this._bookingService.getAvailableSlots(
-        providerId as string,
-        date as string
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(slots, SUCCESS_MESSAGES.SLOTS_FETCHED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  getAvailableSlots = asyncHandler(async (req: Request, res: Response) => {
+    const { providerId, date } = req.query as { providerId: string; date: string };
+    if (!providerId || !date) throw new BadRequestError("Provider ID and Date are required");
+    const slots = await this._bookingService.getAvailableSlots(providerId, date);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(slots));
+  });
 
-  createBooking = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user!.id;
-      const booking = await this._bookingService.createBooking(userId, req.body);
-      res.status(HttpStatusCode.CREATED).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_CREATED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  createBooking = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const booking = await this._bookingService.createBooking(userId, req.body);
+    res.status(HttpStatusCode.CREATED).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Booking created successfully"));
+  });
 
-  getUserBookings = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const bookings = await this._bookingService.getUserBookings(req.user!.id);
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toArrayResponse(bookings, true), SUCCESS_MESSAGES.BOOKINGS_FETCHED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  getUserBookings = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const bookings = await this._bookingService.getUserBookings(userId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(bookings.map(b => BookingMapper.toDetailedResponse(b))));
+  });
 
-  getProviderBookings = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const bookings = await this._bookingService.getProviderBookings(req.user!.id);
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toArrayResponse(bookings, true), SUCCESS_MESSAGES.BOOKINGS_FETCHED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  getProviderBookings = asyncHandler(async (req: Request, res: Response) => {
+    const providerUserId = req.user!.id;
+    const bookings = await this._bookingService.getProviderBookings(providerUserId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(bookings.map(b => BookingMapper.toDetailedResponse(b))));
+  });
 
-  getBookingDetail = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.getBookingDetail(
-        req.params.id,
-        req.user!.id,
-        req.user!.role
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_DETAIL_FETCHED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  getBookingDetail = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const userId = req.user!.id;
+    const role = req.user!.role;
+    const booking = await this._bookingService.getBookingDetail(bookingId, userId, role);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking)));
+  });
 
-  acceptBooking = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.acceptBooking(req.params.id, req.user!.id);
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_ACCEPTED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  acceptBooking = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const providerUserId = req.user!.id;
+    const booking = await this._bookingService.acceptBooking(bookingId, providerUserId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Booking accepted"));
+  });
 
-  confirmBooking = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.updateBookingStatus(
-        req.params.id,
-        req.user!.id,
-        "confirmed"
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_CONFIRMED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  updateBookingStatus = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const providerUserId = req.user!.id;
+    const { status } = req.body;
+    const booking = await this._bookingService.updateBookingStatus(bookingId, providerUserId, status);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking), `Booking marked as ${status}`));
+  });
 
-  completeBooking = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.updateBookingStatus(
-        req.params.id,
-        req.user!.id,
-        "completed"
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_COMPLETED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  cancelBooking = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const userId = req.user!.id;
+    const role = req.user!.role;
+    const { reason } = req.body;
+    const booking = await this._bookingService.cancelBooking(bookingId, userId, role, reason);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Booking cancelled successfully"));
+  });
 
-  cancelBooking = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.cancelBooking(
-        req.params.id,
-        req.user!.id,
-        req.user!.role,
-        req.body.reason
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_CANCELLED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  rescheduleBooking = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const userId = req.user!.id;
+    const booking = await this._bookingService.rescheduleBooking(bookingId, userId, req.body);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Booking rescheduled successfully"));
+  });
 
-  rescheduleBooking = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.rescheduleBooking(
-        req.params.id,
-        req.user!.id,
-        req.body
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_RESCHEDULED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  providerRescheduleBooking = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const providerUserId = req.user!.id;
+    const booking = await this._bookingService.providerRescheduleBooking(bookingId, providerUserId, req.body);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Reschedule request sent to customer"));
+  });
 
-  providerRescheduleBooking = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.providerRescheduleBooking(
-        req.params.id,
-        req.user!.id,
-        req.body
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.BOOKING_RESCHEDULED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  customerAcceptReschedule = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const userId = req.user!.id;
+    const booking = await this._bookingService.customerAcceptReschedule(bookingId, userId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Rescheduled time accepted"));
+  });
 
-  customerAcceptReschedule = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.customerAcceptReschedule(
-        req.params.id,
-        req.user!.id
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.RESCHEDULE_ACCEPTED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  customerRejectReschedule = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const userId = req.user!.id;
+    const booking = await this._bookingService.customerRejectReschedule(bookingId, userId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Rescheduled time rejected and booking cancelled"));
+  });
 
-  customerRejectReschedule = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.customerRejectReschedule(
-        req.params.id,
-        req.user!.id
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.RESCHEDULE_REJECTED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  generateArrivalOtp = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const providerUserId = req.user!.id;
+    await this._bookingService.generateArrivalOtp(bookingId, providerUserId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Arrival OTP sent to customer"));
+  });
 
-  generateArrivalOtp = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.generateArrivalOtp(req.params.id, req.user!.id);
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.ARRIVAL_OTP_GENERATED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  verifyArrivalOtp = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const providerUserId = req.user!.id;
+    const { otp } = req.body;
+    const booking = await this._bookingService.verifyArrivalOtp(bookingId, providerUserId, otp);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Arrival verified, job started"));
+  });
 
-  verifyArrivalOtp = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.verifyArrivalOtp(
-        req.params.id,
-        req.user!.id,
-        req.body.otp
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.ARRIVAL_OTP_VERIFIED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  generateCompletionOtp = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const providerUserId = req.user!.id;
+    await this._bookingService.generateCompletionOtp(bookingId, providerUserId, req.body);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Completion OTP and invoice sent to customer"));
+  });
 
-  generateCompletionOtp = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.generateCompletionOtp(
-        req.params.id,
-        req.user!.id,
-        req.body.invoiceData
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.COMPLETION_OTP_GENERATED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  verifyCompletionOtp = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const booking = await this._bookingService.verifyCompletionOtp(
-        req.params.id,
-        req.user!.id,
-        req.body.otp
-      );
-      res.status(HttpStatusCode.OK).json(
-        createSuccessResponse(BookingMapper.toDetailedResponse(booking), SUCCESS_MESSAGES.COMPLETION_OTP_VERIFIED)
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
+  verifyCompletionOtp = asyncHandler(async (req: Request, res: Response) => {
+    const bookingId = req.params.bookingId as string;
+    const providerUserId = req.user!.id;
+    const { otp } = req.body;
+    const booking = await this._bookingService.verifyCompletionOtp(bookingId, providerUserId, otp);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(BookingMapper.toDetailedResponse(booking), "Job completed, awaiting final payment"));
+  });
 }

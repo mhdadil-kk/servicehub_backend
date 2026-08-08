@@ -1,4 +1,4 @@
-import { ITransaction } from "../models/transaction.model";
+import { ITransaction } from "../types/transaction.types";
 
 export interface TransactionResponseDTO {
   _id: string;
@@ -14,13 +14,13 @@ export interface TransactionResponseDTO {
 }
 
 export class TransactionMapper {
-  static toResponse(transaction: ITransaction | any): TransactionResponseDTO | null {
+  static toResponse(transaction: ITransaction & { toObject?: () => ITransaction }): TransactionResponseDTO | null {
     if (!transaction) return null;
 
     const t = typeof transaction.toObject === 'function' ? transaction.toObject() : transaction;
 
     return {
-      _id: t._id.toString(),
+      _id: (t as ITransaction & { _id?: { toString: () => string }; id?: string })._id?.toString() || (t as ITransaction & { id?: string }).id || "",
       walletId: t.walletId.toString(),
       userId: t.userId.toString(),
       type: t.type,
@@ -33,7 +33,7 @@ export class TransactionMapper {
     };
   }
 
-  static toArrayResponse(transactions: any[]): TransactionResponseDTO[] {
+  static toArrayResponse(transactions: (ITransaction & { toObject?: () => ITransaction })[]): TransactionResponseDTO[] {
     return transactions.map(tx => this.toResponse(tx)!);
   }
 }

@@ -1,68 +1,67 @@
-import express from "express";
+import { Router } from "express";
+import { providerService } from "../di/container"; 
 import { ProviderController } from "../controllers/provider.controller";
-import { ProviderService } from "../services/provider.service";
-import { ProviderProfileRepository } from "../repositories/providerProfile.repository";
-import { ProviderAvailabilityRepository } from "../repositories/providerAvailability.repository";
-import { AuthRepository } from "../repositories/auth.repository";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { roleMiddleware } from "../middlewares/role.middleware";
-import { uploadProfile, uploadDocuments } from "../middlewares/upload.middleware";
 import { validate } from "../middlewares/validate.middleware";
+import { uploadProfile, uploadDocuments } from "../middlewares/upload.middleware";
 import {
   ProfileUpdateSchema,
-  ServiceDetailsSchema,
   LocationUpdateSchema,
+  ServiceDetailsSchema,
   BankDetailsSchema,
+  UpdateAvailabilitySchema
 } from "../dtos/provider.dto";
-import { ROUTES } from "../constants/routes";
 
-const router = express.Router();
 
-const providerProfileRepository = new ProviderProfileRepository();
-const providerAvailabilityRepository = new ProviderAvailabilityRepository();
-const userRepository = new AuthRepository();
-const providerService = new ProviderService(
-  providerProfileRepository,
-  providerAvailabilityRepository,
-  userRepository
-);
+const router = Router();
 const providerController = new ProviderController(providerService);
 
-router.use(authMiddleware, roleMiddleware(["provider"]));
+router.use(authMiddleware, roleMiddleware("provider"));
 
-router.get(ROUTES.PROVIDER.PROFILE, providerController.getProfile);
-router.get(ROUTES.PROVIDER.AVAILABILITY, providerController.getAvailability);
-router.put(ROUTES.PROVIDER.AVAILABILITY, providerController.updateAvailability);
+router.get("/profile", providerController.getProfile);
 
-router.patch(
-  ROUTES.PROVIDER.ONBOARDING_PROFILE,
+router.put(
+  "/profile",
   uploadProfile.single("profilePhoto"),
   validate(ProfileUpdateSchema),
   providerController.updateProfile
 );
-router.patch(
-  ROUTES.PROVIDER.ONBOARDING_LOCATION,
+
+router.put(
+  "/location",
   validate(LocationUpdateSchema),
   providerController.updateLocation
 );
-router.patch(
-  ROUTES.PROVIDER.ONBOARDING_SERVICE,
+
+router.put(
+  "/service-details",
   validate(ServiceDetailsSchema),
   providerController.updateServiceDetails
 );
+
 router.post(
-  ROUTES.PROVIDER.ONBOARDING_DOCUMENTS,
+  "/verify-docs",
   uploadDocuments.fields([
-    { name: "identity", maxCount: 5 },
-    { name: "license", maxCount: 5 },
+    { name: "identity", maxCount: 2 },
+    { name: "license", maxCount: 2 }
   ]),
   providerController.uploadVerificationDocs
 );
-router.post(ROUTES.PROVIDER.ONBOARDING_RESET, providerController.resetForReapply);
-router.patch(
-  ROUTES.PROVIDER.ONBOARDING_BANK,
+
+router.put(
+  "/bank-details",
   validate(BankDetailsSchema),
   providerController.updateBankDetails
+);
+
+router.post("/reapply", providerController.resetForReapply);
+
+router.get("/availability", providerController.getAvailability);
+router.put(
+  "/availability",
+  validate(UpdateAvailabilitySchema),
+  providerController.updateAvailability
 );
 
 export default router;

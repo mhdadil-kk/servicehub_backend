@@ -41,3 +41,11 @@ export const BankDetailsSchema = z.object({
     routingNumber: z.string().min(1),
   }),
 });
+
+export const UpdateAvailabilitySchema = z.object({
+  body: z.object({
+    days: z.array(z.string()).optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+  }),
+});

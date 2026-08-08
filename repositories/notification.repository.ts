@@ -1,7 +1,8 @@
+import { FilterQuery } from "mongoose";
 import NotificationModel from "../models/notification.model";
 import { INotification } from "../types/notification.types";
 import { BaseRepository } from "./base.repository";
-import { FilterQuery } from "mongoose";
+
 import { INotificationRepository } from "../interfaces/repositories/INotificationRepository";
 
 export class NotificationRepository
@@ -21,7 +22,7 @@ export class NotificationRepository
    }
 
    async countUnread(userId: string): Promise<number> {
-       return this.model.countDocuments({ userId, isRead: false }).exec();
+       return this.model.countDocuments({ userId, isRead: false } as FilterQuery<INotification>).exec();
    }
 
    async markAsRead(id: string, userId: string): Promise<INotification | null> {
@@ -29,14 +30,14 @@ export class NotificationRepository
       .findOneAndUpdate(
         { _id: id, userId } as FilterQuery<INotification>,
         { isRead: true },
-        { new: true }
+        { returnDocument: "after" }
       )
       .exec();
   }
 
   async markAllAsRead(userId: string): Promise<void> {
     await this.model
-      .updateMany({ userId, isRead: false }, { isRead: true })
+      .updateMany({ userId, isRead: false } as FilterQuery<INotification>, { isRead: true })
       .exec();
   }
 
@@ -47,6 +48,6 @@ export class NotificationRepository
       type?: INotification["type"];
       relatedId?: string;
   }): Promise<INotification> {
-    return super.create(data as Partial<INotification>);
+    return super.create(data as unknown as Partial<INotification>);
   }
 }  

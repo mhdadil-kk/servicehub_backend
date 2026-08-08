@@ -1,11 +1,11 @@
-import TransactionModel from "../models/transaction.model";
-import { ITransaction } from "../models/transaction.model";
+import TransactionModel, { ITransactionDocument } from "../models/transaction.model";
+import { ITransaction } from "../types/transaction.types";
 import { BaseRepository } from "./base.repository";
-import mongoose from "mongoose";
+import mongoose, { FilterQuery } from "mongoose";
 import { ITransactionRepository } from "../interfaces/repositories/ITransactionRepository";
 
 export class TransactionRepository
-    extends BaseRepository<ITransaction>
+    extends BaseRepository<ITransactionDocument>
     implements ITransactionRepository {
     constructor() {
         super(TransactionModel);
@@ -51,17 +51,17 @@ export class TransactionRepository
             description: data.description,
             referenceId: data.referenceId,
             status: data.status ?? "success",
-        } as Partial<ITransaction>);
+        } as unknown as Partial<ITransactionDocument>) as unknown as ITransaction;
     }
     async findByWalletId(walletId: string): Promise<ITransaction[]> {
         return this.model
-            .find({ walletId })
+            .find({ walletId } as FilterQuery<ITransactionDocument>)
             .sort({ createdAt: -1 })
             .populate("referenceId")
-            .exec();
+            .exec() as unknown as ITransaction[];
     }
 
-    async getTotalRevenue(dateFilter: any = {}): Promise<number> {
+    async getTotalRevenue(dateFilter: FilterQuery<ITransactionDocument> = {}): Promise<number> {
     
         const result = await this.model.aggregate([
             { $match: { status: "success", type: "credit", ...dateFilter } },
@@ -70,7 +70,7 @@ export class TransactionRepository
         return result.length > 0 ? result[0].total : 0;
     }
 
-    async getRevenueByMonth(dateFilter: any = {}): Promise<{ month: string; year: number; revenue: number }[]> {
+    async getRevenueByMonth(dateFilter: FilterQuery<ITransactionDocument> = {}): Promise<{ month: string; year: number; revenue: number }[]> {
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const result = await this.model.aggregate([
             { $match: { status: "success", type: "credit", ...dateFilter } },

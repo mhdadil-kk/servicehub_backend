@@ -2,7 +2,7 @@ import { IServiceService, GetApprovedProvidersOptions, GetApprovedProvidersResul
 import { IServiceRepository } from "../interfaces/repositories/IServiceRepository";
 import { IUserRepository } from "../interfaces/repositories/IUserRepository";
 import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
-import { IService } from "../models/service.model";
+import { IService } from "../types/service.types";
 
 export class ServiceService implements IServiceService {
     constructor(

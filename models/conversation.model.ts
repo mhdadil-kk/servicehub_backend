@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export interface IConversation extends Document {
+export interface IConversationDocument extends Document {
   participants: mongoose.Types.ObjectId[];
   bookingId?: mongoose.Types.ObjectId | null;
   createdAt: Date;
@@ -23,4 +23,4 @@ ConversationSchema.index(
   { unique: false }  
 );
 
-export default mongoose.model<IConversation>("Conversation", ConversationSchema);
+export default mongoose.model<IConversationDocument>("Conversation", ConversationSchema);

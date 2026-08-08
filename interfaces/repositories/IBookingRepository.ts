@@ -1,4 +1,5 @@
 import { IBooking } from "../../types/booking.types";
+import mongoose from "mongoose";
 
 export interface AvailableSlot {
   id: string;
@@ -32,9 +33,10 @@ export interface IBookingRepository {
   findDetailForUser(bookingId: string, userId: string): Promise<IBooking | null>;
   findDetailForProvider(bookingId: string, providerProfileId: string): Promise<IBooking | null>;
   updateStatus(bookingId: string, data: Partial<IBooking>): Promise<IBooking | null>;
-  findAllWithFilters(query: any, sort: any, skip: number, limit: number): Promise<IBooking[]>;
-  countByFilter(query: any): Promise<number>;
-  getServiceBookingTrends(dateFilter?: any): Promise<any[]>;
-  findByIdPopulated(id: string): Promise<any>;
-  getPlatformRevenueByMonth(dateFilter?: any): Promise<{ month: string; year: number; count: number }[]>;
+  findAllWithFilters(query: mongoose.FilterQuery<IBooking>, sort: Record<string, mongoose.SortOrder>, skip: number, limit: number): Promise<IBooking[]>;
+  countByFilter(query: mongoose.FilterQuery<IBooking>): Promise<number>;
+  getServiceBookingTrends(dateFilter?: mongoose.FilterQuery<IBooking>): Promise<{ _id: string; count: number }[]>;
+  findByIdPopulated(id: string): Promise<IBooking | null>;
+  getPlatformRevenueByMonth(dateFilter?: mongoose.FilterQuery<IBooking>): Promise<{ month: string; year: number; count: number }[]>;
+
 }

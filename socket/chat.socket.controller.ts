@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { IChatService } from "../interfaces/services/IChatService";
+import { MessageMapper } from "../mappers/message.mapper";
 
 export class ChatSocketController {
   constructor(
@@ -22,17 +23,24 @@ export class ChatSocketController {
         const roomName = `conversation_${convId}`;
         socket.to(roomName).emit("messages_delivered", { conversationId: convId });
       });
-    } catch (err) {
+    } catch {
       socket.emit("error", { message: "Failed to mark messages as delivered" });
     }
 
     socket.on("join_room", async (id: string) => this.handleJoinRoom(socket, user.id, id));
-    
-    socket.on("send_message", async (data: { conversationId?: string; bookingId?: string; content: string }) => 
-      this.handleSendMessage(socket, user, data)
+
+    socket.on(
+      "send_message",
+      async (data: {
+        conversationId?: string;
+        bookingId?: string;
+        content: string;
+        imageUrl?: string;
+        imagePublicId?: string;
+      }) => this.handleSendMessage(socket, user, data)
     );
 
-    socket.on("delete_message", async (data: { messageId: string }) => 
+    socket.on("delete_message", async (data: { messageId: string }) =>
       this.handleDeleteMessage(socket, user.id, data)
     );
 
@@ -47,36 +55,61 @@ export class ChatSocketController {
       const roomName = `conversation_${roomId}`;
       socket.join(roomName);
       socket.to(roomName).emit("messages_read", { conversationId: roomId });
-    } catch (err) {
+    } catch {
       socket.emit("error", { message: "Failed to join room" });
     }
   }
 
   private async handleSendMessage(
-    socket: Socket, 
-    user: { id: string; role: string }, 
-    data: { conversationId?: string; bookingId?: string; content: string }
+    socket: Socket,
+    user: { id: string; role: string },
+    data: {
+      conversationId?: string;
+      bookingId?: string;
+      content: string;
+      imageUrl?: string;
+      imagePublicId?: string;
+    }
   ) {
-    const { conversationId, bookingId, content } = data;
+    const { conversationId, bookingId, content, imageUrl, imagePublicId } = data;
     const id = conversationId || bookingId;
-    
-    if (!id || !content?.trim()) return;
+    if (!id) return;
 
     try {
-      const message = await this._chatService.saveMessage(id, user.id, user.role as "user" | "provider", content);
-      const convId = message.conversationId.toString();
+      let rawMessage;
+
+      if (imageUrl && imagePublicId) {
+        rawMessage = await this._chatService.saveImageMessage(
+          id,
+          user.id,
+          user.role as "user" | "provider",
+          imageUrl,
+          imagePublicId
+        );
+      } else {
+        if (!content?.trim()) return;
+        rawMessage = await this._chatService.saveMessage(
+          id,
+          user.id,
+          user.role as "user" | "provider",
+          content
+        );
+      }
+
+      const convId = rawMessage.conversationId.toString();
       const roomName = `conversation_${convId}`;
-      
+
       const socketsInRoom = await this._io.in(roomName).fetchSockets();
       const recipientOnline = socketsInRoom.some((s) => s.data.user?.id !== user.id);
 
       if (recipientOnline) {
-        await this._chatService.markMessageDelivered(message._id.toString());
-        (message as any).delivered = true;
+        await this._chatService.markMessageDelivered(rawMessage.id);
+        rawMessage.delivered = true;
       }
 
-      this._io.to(roomName).emit("message_received", message);
-    } catch (err) {
+      const mapped = MessageMapper.toResponse(rawMessage);
+      this._io.to(roomName).emit("message_received", mapped);
+    } catch {
       socket.emit("error", { message: "Failed to send message" });
     }
   }
@@ -87,9 +120,10 @@ export class ChatSocketController {
 
     try {
       const message = await this._chatService.deleteMessage(messageId, userId);
+      const mapped = MessageMapper.toResponse(message);
       const roomName = `conversation_${message.conversationId}`;
-      this._io.to(roomName).emit("message_deleted", message);
-    } catch (err) {
+      this._io.to(roomName).emit("message_deleted", mapped);
+    } catch {
       socket.emit("error", { message: "Failed to delete message" });
     }
   }
@@ -99,7 +133,7 @@ export class ChatSocketController {
       await this._chatService.markAsRead(roomId, userId);
       const roomName = `conversation_${roomId}`;
       socket.to(roomName).emit("messages_read", { conversationId: roomId });
-    } catch (err) {
+    } catch {
       socket.emit("error", { message: "Failed to mark messages as read" });
     }
   }

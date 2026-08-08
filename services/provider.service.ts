@@ -1,8 +1,8 @@
+import mongoose from "mongoose";
 import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
 import { IProviderAvailabilityRepository } from "../interfaces/repositories/IProviderAvailabilityRepository";
-import { IUserRepository } from "../repositories/auth.repository";
-import { IProviderProfile } from "../types/providerProfile.types";
-import { IProviderAvailability } from "../types/providerProfile.types";
+import { IUserRepository } from "../interfaces/repositories/IUserRepository";
+import { IProviderDocument, IProviderProfile, IProviderAvailability } from "../types/providerProfile.types";
 import { BadRequestError, NotFoundError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
 import { IProviderService } from "../interfaces/services/IProviderService";
@@ -25,7 +25,7 @@ export class ProviderService implements IProviderService {
     return this._providerProfileRepository.findByUserIdWithDetails(userId);
   }
 
-  async updateProfile(userId, data) {
+  async updateProfile(userId: string, data: { bio?: string; profilePhoto?: string; name?: string; phone?: string }) {
     const profile = await this._providerProfileRepository.findOrCreateByUserId(userId);
 
     const profileUpdate: Partial<IProviderProfile> = {
@@ -35,7 +35,7 @@ export class ProviderService implements IProviderService {
     if (data.profilePhoto) profileUpdate.profilePhoto = data.profilePhoto;
 
     const updated = await this._providerProfileRepository.updateById(
-      profile._id.toString(),
+      profile._id ? profile._id.toString() : (profile as unknown as { id: string }).id,
       profileUpdate
     );
 
@@ -51,7 +51,7 @@ export class ProviderService implements IProviderService {
     return updated;
   }
 
-  async updateLocation(userId, data) {
+  async updateLocation(userId: string, data: { address?: string; serviceRadius?: number; latitude?: number; longitude?: number }) {
     const profile = await this._providerProfileRepository.findByUserId(userId);
     if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
 
@@ -67,51 +67,51 @@ export class ProviderService implements IProviderService {
       };
     }
 
-    const updated = await this._providerProfileRepository.updateById(profile._id.toString(), update);
+    const updated = await this._providerProfileRepository.updateById(profile._id ? profile._id.toString() : (profile as unknown as { id: string }).id, update);
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
     return updated;
   }
 
-  async updateServiceDetails(userId, { serviceId, hourlyRate }) {
+  async updateServiceDetails(userId: string, { serviceId, hourlyRate }: { serviceId: string; hourlyRate: number }) {
     const profile = await this._providerProfileRepository.findByUserId(userId);
     if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
-
-    return (await this._providerProfileRepository.updateById(profile._id.toString(), {
-      serviceId,
+                             
+    return (await this._providerProfileRepository.updateById(profile._id ? profile._id.toString() : (profile as unknown as { id: string }).id, {
+      serviceId: serviceId as unknown as mongoose.Types.ObjectId,
       hourlyRate,
       onboardingStep: Math.max(profile.onboardingStep, 4),
     }))!;
   }
 
-  async uploadVerificationDocs(userId, documents) {
+  async uploadVerificationDocs(userId: string, documents: IProviderDocument[]) {
     if (!documents.length) throw new BadRequestError(ERROR_MESSAGES.NO_DOCUMENTS_UPLOADED);
 
     const profile = await this._providerProfileRepository.findByUserId(userId);
     if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
 
-    return (await this._providerProfileRepository.updateById(profile._id.toString(), {
+    return (await this._providerProfileRepository.updateById(profile._id ? profile._id.toString() : (profile as unknown as { id: string }).id, {
       documents,
       onboardingStep: Math.max(profile.onboardingStep, 5),
       onboardingStatus: "in_review",
     }))!;
   }
 
-  async updateBankDetails(userId, bankDetails) {
+  async updateBankDetails(userId: string, bankDetails: NonNullable<IProviderProfile["bankDetails"]>) {
     const profile = await this._providerProfileRepository.findByUserId(userId);
     if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
 
-    const updated = await this._providerProfileRepository.updateById(profile._id.toString(), {
+    const updated = await this._providerProfileRepository.updateById(profile._id ? profile._id.toString() : (profile as unknown as { id: string }).id, {
       bankDetails,
       onboardingStep: 5,
       onboardingStatus: "in_review",
     });
 
-    await this._userRepository.updateById(userId, { status: "in_review" });
+    await this._userRepository.updateById(userId, { status: "pending" }); 
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
     return updated;
   }
 
-  async resetForReapply(userId) {
+  async resetForReapply(userId: string) {
     const profile = await this._providerProfileRepository.findByUserId(userId);
     if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
 
@@ -119,7 +119,7 @@ export class ProviderService implements IProviderService {
       throw new BadRequestError(ERROR_MESSAGES.ONLY_REJECTED_CAN_REAPPLY);
     }
 
-    const updated = await this._providerProfileRepository.updateById(profile._id.toString(), {
+    const updated = await this._providerProfileRepository.updateById(profile._id ? profile._id.toString() : (profile as unknown as { id: string }).id, {
       onboardingStatus: "pending",
       onboardingStep: 1,
       rejectionReason: "",
@@ -130,17 +130,17 @@ export class ProviderService implements IProviderService {
     return updated;
   }
 
-  async getAvailability(userId) {
+  async getAvailability(userId: string) {
     const profile = await this._providerProfileRepository.findByUserId(userId);
     if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROVIDER_PROFILE_NOT_FOUND);
 
-    return this._providerAvailabilityRepository.findOrCreateByProviderId(profile._id.toString());
+    return this._providerAvailabilityRepository.findOrCreateByProviderId(profile._id ? profile._id.toString() : (profile as unknown as { id: string }).id);
   }
 
-  async updateAvailability(userId, data) {
+  async updateAvailability(userId: string, data: Partial<IProviderAvailability>) {
     const profile = await this._providerProfileRepository.findByUserId(userId);
     if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROVIDER_PROFILE_NOT_FOUND);
 
-    return this._providerAvailabilityRepository.upsertByProviderId(profile._id.toString(), data);
+    return this._providerAvailabilityRepository.upsertByProviderId(profile._id ? profile._id.toString() : (profile as unknown as { id: string }).id, data);
   }
 }
