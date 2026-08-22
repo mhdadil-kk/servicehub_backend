@@ -3,8 +3,6 @@ import { IWalletService } from "../interfaces/services/IWalletService";
 import { HttpStatusCode } from "../types/http";
 import { createSuccessResponse } from "../types/response";
 import { SUCCESS_MESSAGES } from "../constants/messages";
-import { WalletMapper } from "../mappers/wallet.mapper";
-import { TransactionMapper } from "../mappers/transaction.mapper";
 import { asyncHandler } from "../utils/async-handler";
 
 export class WalletController {
@@ -17,8 +15,8 @@ export class WalletController {
 
     res.status(HttpStatusCode.OK).json(
       createSuccessResponse({ 
-        wallet: WalletMapper.toResponse(wallet), 
-        transactions: TransactionMapper.toArrayResponse(transactions) 
+        wallet, 
+        transactions 
       }, SUCCESS_MESSAGES.WALLET_FETCHED)
     );
   });

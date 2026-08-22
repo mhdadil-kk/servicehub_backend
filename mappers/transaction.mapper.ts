@@ -1,17 +1,5 @@
 import { ITransaction } from "../types/transaction.types";
-
-export interface TransactionResponseDTO {
-  _id: string;
-  walletId: string;
-  userId: string;
-  type: "credit" | "debit";
-  amount: number;
-  description: string;
-  referenceId?: string;
-  status: "pending" | "success" | "failed";
-  createdAt: string;
-  updatedAt: string;
-}
+import { TransactionResponseDTO } from "../dtos/wallet.dto";
 
 export class TransactionMapper {
   static toResponse(transaction: ITransaction & { toObject?: () => ITransaction }): TransactionResponseDTO | null {
@@ -20,9 +8,9 @@ export class TransactionMapper {
     const t = typeof transaction.toObject === 'function' ? transaction.toObject() : transaction;
 
     return {
-      _id: (t as ITransaction & { _id?: { toString: () => string }; id?: string })._id?.toString() || (t as ITransaction & { id?: string }).id || "",
-      walletId: t.walletId.toString(),
-      userId: t.userId.toString(),
+      _id: t._id?.toString() || t.id || "",
+      walletId: t.walletId ? t.walletId.toString() : "",
+      userId: t.userId ? t.userId.toString() : "",
       type: t.type,
       amount: t.amount,
       description: t.description,

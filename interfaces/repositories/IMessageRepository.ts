@@ -1,6 +1,7 @@
 import { IMessage } from "../../types/chat.types";
 
 export interface IMessageRepository {
+  create(data: Partial<IMessage>): Promise<IMessage>;
   createBookingCardMessage(data: {
     conversationId: string;
     bookingId: string;

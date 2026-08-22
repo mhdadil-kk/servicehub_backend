@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { IReviewService } from "../interfaces/services/IReviewService";
 import { HttpStatusCode } from "../types/http";
 import { createSuccessResponse } from "../types/response";
-import { ReviewMapper } from "../mappers/review.mapper";
 import { SUCCESS_MESSAGES } from "../constants/messages";
 import { asyncHandler } from "../utils/async-handler";
 
@@ -24,7 +23,7 @@ export class ReviewController {
       : SUCCESS_MESSAGES.REVIEW_ALREADY_SUBMITTED;
 
     res.status(status).json(
-      createSuccessResponse({ review: ReviewMapper.toResponse(review) }, message)
+      createSuccessResponse({ review }, message)
     );
   });
 
@@ -38,7 +37,7 @@ export class ReviewController {
     res.status(HttpStatusCode.OK).json(
       createSuccessResponse(
         {
-          reviews: result.reviews.map(ReviewMapper.toResponse),
+          reviews: result.reviews,
           pagination: result.pagination,
         },
         SUCCESS_MESSAGES.REVIEWS_FETCHED
@@ -56,7 +55,7 @@ export class ReviewController {
       : SUCCESS_MESSAGES.REVIEW_UNLIKED;
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse({ review: ReviewMapper.toResponse(review) }, message)
+      createSuccessResponse({ review }, message)
     );
   });
 }

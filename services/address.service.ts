@@ -3,20 +3,23 @@ import { IAddress } from "../types/address.types";
 import { NotFoundError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
 import { IAddressService, CreateAddressInput, UpdateAddressInput } from "../interfaces/services/IAddressService";
+import { AddressResponseDTO } from "../dtos/address.dto";
+import { AddressMapper } from "../mappers/address.mapper";
+import mongoose from "mongoose";
 
 export class AddressService implements IAddressService {
-    private _addressRepository: IAddressRepository;
-  constructor(
-    addressRepository: IAddressRepository
-  ) {
-    this._addressRepository = addressRepository;
-}
+  private _addressRepository: IAddressRepository;
 
-  async getAddresses(userId: string): Promise<IAddress[]> {
-    return this._addressRepository.findByUserId(userId);
+  constructor(addressRepository: IAddressRepository) {
+    this._addressRepository = addressRepository;
   }
 
-  async createAddress(userId: string, data: CreateAddressInput): Promise<IAddress> {
+  async getAddresses(userId: string): Promise<AddressResponseDTO[]> {
+    const addresses = await this._addressRepository.findByUserId(userId);
+    return AddressMapper.toArrayResponse(addresses);
+  }
+
+  async createAddress(userId: string, data: CreateAddressInput): Promise<AddressResponseDTO> {
     const addressCount = await this._addressRepository.countByUserId(userId);
     let isDefault = data.isDefault ?? false;
     if (addressCount === 0) isDefault = true;
@@ -25,17 +28,19 @@ export class AddressService implements IAddressService {
       await this._addressRepository.clearDefaultForUser(userId);
     }
 
-    return this._addressRepository.create({
-      userId,
+    const created = await this._addressRepository.create({
+      userId: new mongoose.Types.ObjectId(userId),
       label: data.label,
       fullAddress: data.fullAddress,
       latitude: data.latitude,
       longitude: data.longitude,
       isDefault,
-    } as unknown as Partial<IAddress>);
+    });
+
+    return AddressMapper.toResponse(created)!;
   }
 
-  async updateAddress(userId: string, addressId: string, data: UpdateAddressInput): Promise<IAddress> {
+  async updateAddress(userId: string, addressId: string, data: UpdateAddressInput): Promise<AddressResponseDTO> {
     const address = await this._addressRepository.findByIdForUser(addressId, userId);
     if (!address) throw new NotFoundError(ERROR_MESSAGES.ADDRESS_NOT_FOUND);
 
@@ -62,7 +67,7 @@ export class AddressService implements IAddressService {
 
     const updated = await this._addressRepository.updateById(addressId, updates);
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.ADDRESS_NOT_FOUND);
-    return updated;
+    return AddressMapper.toResponse(updated)!;
   }
 
   async deleteAddress(userId: string, addressId: string): Promise<void> {
@@ -81,13 +86,13 @@ export class AddressService implements IAddressService {
     }
   }
 
-  async setDefaultAddress(userId: string, addressId: string): Promise<IAddress> {
+  async setDefaultAddress(userId: string, addressId: string): Promise<AddressResponseDTO> {
     const address = await this._addressRepository.findByIdForUser(addressId, userId);
     if (!address) throw new NotFoundError(ERROR_MESSAGES.ADDRESS_NOT_FOUND);
 
     await this._addressRepository.clearDefaultForUser(userId);
     const updated = await this._addressRepository.updateById(addressId, { isDefault: true });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.ADDRESS_NOT_FOUND);
-    return updated;
+    return AddressMapper.toResponse(updated)!;
   }
 }

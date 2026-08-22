@@ -10,7 +10,13 @@ import bookingRoutes from "./routes/booking.routes";
 import chatRoutes from "./routes/chat.routes";
 import paymentRoutes from "./routes/payment.routes";
 import reviewRoutes from "./routes/review.routes";
+import notificationRoutes from "./routes/notification.routes";
+import walletRoutes from "./routes/wallet.routes";
+import dashboardRoutes from "./routes/dashboard.routes";
+import reportRoutes from "./routes/report.routes";
 import { globalErrorHandler } from "./middlewares/error.middleware";
+import { requestLogger } from "./middlewares/request-logger.middleware";
+import { ROUTES } from "./constants/routes";
 
 const app = express();
 
@@ -27,30 +33,22 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
-
-import { requestLogger } from "./middlewares/request-logger.middleware";
-
 app.use(requestLogger);
 
-import notificationRoutes from "./routes/notification.routes";
-import walletRoutes from "./routes/wallet.routes";
-import dashboardRoutes from "./routes/dashboard.routes";
-import reportRoutes from "./routes/report.routes";
-
-app.use("/api/auth", authRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/services", serviceRoutes);
-app.use("/api/provider", providerRoutes);
-app.use("/api/providers", providersRoutes);
-app.use("/api/addresses", addressRoutes);
-app.use("/api/bookings", bookingRoutes);
-app.use("/api/chat", chatRoutes);
-app.use("/api/payments", paymentRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/wallet", walletRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/reviews", reviewRoutes);
-app.use("/api/reports", reportRoutes);
+app.use(ROUTES.AUTH.BASE, authRoutes);
+app.use(ROUTES.ADMIN.BASE, adminRoutes);
+app.use(ROUTES.SERVICES.BASE, serviceRoutes);
+app.use(ROUTES.PROVIDER.BASE, providerRoutes);
+app.use(ROUTES.PROVIDERS.BASE, providersRoutes);
+app.use(ROUTES.ADDRESS.BASE, addressRoutes);
+app.use(ROUTES.BOOKINGS.BASE, bookingRoutes);
+app.use(ROUTES.CHAT.BASE, chatRoutes);
+app.use(ROUTES.PAYMENTS.BASE, paymentRoutes);
+app.use(ROUTES.NOTIFICATIONS.BASE, notificationRoutes);
+app.use(ROUTES.WALLET.BASE, walletRoutes);
+app.use(ROUTES.DASHBOARD.BASE, dashboardRoutes);
+app.use(ROUTES.REVIEWS.BASE, reviewRoutes);
+app.use(ROUTES.REPORTS.BASE, reportRoutes);
 
 app.use(globalErrorHandler);
 

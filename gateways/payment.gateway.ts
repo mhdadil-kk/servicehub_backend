@@ -10,9 +10,19 @@ export interface CreateCheckoutParams {
 
 export interface CheckoutSessionResult {
   sessionId: string;
+  id: string;
   url: string;
+  amount_total?: number | null;
+}
+
+export interface StripeSessionResult {
+  id: string;
+  payment_status: string;
+  payment_intent?: string | null;
+  amount_total?: number | null;
 }
 
 export interface IPaymentGateway {
   createCheckoutSession(params: CreateCheckoutParams): Promise<CheckoutSessionResult>;
+  retrieveSession(sessionId: string): Promise<StripeSessionResult | null>;
 }

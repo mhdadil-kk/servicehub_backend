@@ -1,31 +1,29 @@
 import { IWalletRepository } from "../interfaces/repositories/IWalletRepository";
 import { ITransactionRepository } from "../interfaces/repositories/ITransactionRepository";
-import { IWallet } from "../types/wallet.types";
-import { ITransaction } from "../types/transaction.types";
 import { IWalletService } from "../interfaces/services/IWalletService";
+import { WalletResponseDTO, TransactionResponseDTO } from "../dtos/wallet.dto";
+import { WalletMapper } from "../mappers/wallet.mapper";
+import { TransactionMapper } from "../mappers/transaction.mapper";
 
 export class WalletService implements IWalletService {
-    private _walletRepository: IWalletRepository;
-  private _transactionRepository: ITransactionRepository;
   constructor(
-    walletRepository: IWalletRepository,
-    transactionRepository: ITransactionRepository
-  ) {
-    this._walletRepository = walletRepository;
-    this._transactionRepository = transactionRepository;
-}
+    private _walletRepository: IWalletRepository,
+    private _transactionRepository: ITransactionRepository
+  ) {}
 
-  async getWallet(userId: string): Promise<IWallet> {
-    return this._walletRepository.findOrCreateByUserId(userId);
+  async getWallet(userId: string): Promise<WalletResponseDTO> {
+    const wallet = await this._walletRepository.findOrCreateByUserId(userId);
+    return WalletMapper.toResponse(wallet)!;
   }
 
-  async getHistory(userId: string): Promise<ITransaction[]> {
-    const wallet = await this.getWallet(userId);
-    return this._transactionRepository.findByWalletId(wallet.id);
+  async getHistory(userId: string): Promise<TransactionResponseDTO[]> {
+    const wallet = await this._walletRepository.findOrCreateByUserId(userId);
+    const transactions = await this._transactionRepository.findByWalletId(wallet.id);
+    return TransactionMapper.toArrayResponse(transactions);
   }
 
-  async credit(userId: string, amount: number, description: string, referenceId?: string): Promise<ITransaction> {
-    const wallet = await this.getWallet(userId);
+  async credit(userId: string, amount: number, description: string, referenceId?: string): Promise<TransactionResponseDTO> {
+    const wallet = await this._walletRepository.findOrCreateByUserId(userId);
 
     const transaction = await this._transactionRepository.createTransaction({
       walletId: wallet.id,
@@ -37,11 +35,11 @@ export class WalletService implements IWalletService {
     });
 
     await this._walletRepository.updateBalance(wallet.id, wallet.balance + amount);
-    return transaction;
+    return TransactionMapper.toResponse(transaction)!;
   }
 
-  async debit(userId: string, amount: number, description: string, referenceId?: string): Promise<ITransaction> {
-    const wallet = await this.getWallet(userId);
+  async debit(userId: string, amount: number, description: string, referenceId?: string): Promise<TransactionResponseDTO> {
+    const wallet = await this._walletRepository.findOrCreateByUserId(userId);
 
     const transaction = await this._transactionRepository.createTransaction({
       walletId: wallet.id,
@@ -53,12 +51,12 @@ export class WalletService implements IWalletService {
     });
 
     await this._walletRepository.updateBalance(wallet.id, wallet.balance - amount);
-    return transaction;
+    return TransactionMapper.toResponse(transaction)!;
   }
 
-  async logExpense(userId: string, amount: number, description: string, referenceId?: string): Promise<ITransaction> {
-    const wallet = await this.getWallet(userId);
-    return this._transactionRepository.createTransaction({
+  async logExpense(userId: string, amount: number, description: string, referenceId?: string): Promise<TransactionResponseDTO> {
+    const wallet = await this._walletRepository.findOrCreateByUserId(userId);
+    const transaction = await this._transactionRepository.createTransaction({
       walletId: wallet.id,
       userId,
       type: "debit",
@@ -66,5 +64,6 @@ export class WalletService implements IWalletService {
       description,
       referenceId,
     });
+    return TransactionMapper.toResponse(transaction)!;
   }
 }

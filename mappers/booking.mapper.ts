@@ -1,35 +1,5 @@
 import { IBooking } from "../types/booking.types";
-
-export interface BookingResponseDTO {
-  _id: string;
-  userId: string;
-  providerId: string;
-  serviceId: string;
-  addressId: string;
-  date: string;
-  slot: {
-    start: string;
-    end: string;
-  };
-  status: string;
-  notes?: string;
-  cancelledBy?: string;
-  cancellationReason?: string;
-  rescheduledFrom?: string;
-  rescheduledTo?: string;
-  totalAmount: number;
-  paymentStatus: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface DetailedBookingResponseDTO extends BookingResponseDTO {
-  provider?: Record<string, unknown>;
-  service?: Record<string, unknown>;
-  address?: Record<string, unknown>;
-  user?: Record<string, unknown>;
-  finalInvoice?: Record<string, unknown>;
-}
+import { BookingResponseDTO, DetailedBookingResponseDTO } from "../dtos/booking.dto";
 
 export class BookingMapper {
   static toResponse(booking: IBooking & { toObject?: () => IBooking }): BookingResponseDTO | null {
@@ -37,22 +7,43 @@ export class BookingMapper {
 
     const b = typeof booking.toObject === 'function' ? booking.toObject() : booking;
 
+    const userIdStr = typeof b.userId === 'object' && b.userId !== null && '_id' in b.userId
+      ? b.userId._id.toString()
+      : b.userId ? b.userId.toString() : "";
+
+    const providerIdStr = typeof b.providerId === 'object' && b.providerId !== null && '_id' in b.providerId
+      ? b.providerId._id.toString()
+      : b.providerId ? b.providerId.toString() : "";
+
+    const serviceIdStr = typeof b.serviceId === 'object' && b.serviceId !== null && '_id' in b.serviceId
+      ? b.serviceId._id.toString()
+      : b.serviceId ? b.serviceId.toString() : "";
+
+    const addressIdStr = typeof b.addressId === 'object' && b.addressId !== null && '_id' in b.addressId
+      ? b.addressId._id.toString()
+      : b.addressId ? b.addressId.toString() : undefined;
+
     return {
-      _id: (b as IBooking & { _id?: { toString: () => string }; id?: string })._id?.toString() || (b as IBooking & { id?: string }).id || "",
-      userId: b.userId?.toString(),
-      providerId: b.providerId?.toString(),
-      serviceId: b.serviceId?.toString(),
-      addressId: (b.addressId && typeof b.addressId === 'object') ? b.addressId as unknown as string : b.addressId?.toString(),
+      _id: b._id?.toString() || b.id || "",
+      userId: userIdStr,
+      providerId: providerIdStr,
+      serviceId: serviceIdStr,
+      addressId: addressIdStr,
       date: b.date,
       slot: b.slot,
       status: b.status,
+      paymentStatus: b.paymentStatus,
+      totalAmount: b.totalAmount,
       notes: b.notes,
       cancelledBy: b.cancelledBy,
       cancellationReason: b.cancellationReason,
-      rescheduledFrom: b.rescheduledFrom?.toString(),
-      rescheduledTo: b.rescheduledTo?.toString(),
-      totalAmount: b.totalAmount,
-      paymentStatus: b.paymentStatus,
+      finalInvoice: b.finalInvoice ? {
+        baseCharge: b.finalInvoice.baseCharge,
+        extraCharges: b.finalInvoice.extraCharges?.map(e => ({
+          description: e.description,
+          amount: e.amount,
+        })) || []
+      } : undefined,
       createdAt: new Date(b.createdAt || Date.now()).toISOString(),
       updatedAt: new Date(b.updatedAt || Date.now()).toISOString(),
     };
@@ -60,68 +51,67 @@ export class BookingMapper {
 
   static toDetailedResponse(booking: IBooking & { toObject?: () => IBooking }): DetailedBookingResponseDTO | null {
     if (!booking) return null;
-    
+
     const base = this.toResponse(booking);
     if (!base) return null;
-    
-    const result: DetailedBookingResponseDTO = { ...base };
+
     const b = typeof booking.toObject === 'function' ? booking.toObject() : booking;
+    const result: DetailedBookingResponseDTO = { ...base };
 
-    if (b.providerId && typeof b.providerId === 'object' && ('userId' in b.providerId || 'hourlyRate' in b.providerId || 'address' in b.providerId)) {
-      const providerObj = b.providerId as unknown as { _id?: { toString: () => string }; userId?: { name: string }; profilePhoto?: string; hourlyRate?: number };
+    if (b.providerId && typeof b.providerId === 'object' && '_id' in b.providerId) {
+      const p = b.providerId;
+      const userName = typeof p.userId === 'object' && p.userId !== null && 'name' in p.userId
+        ? p.userId.name || ""
+        : "";
+
       result.provider = {
-        _id: providerObj._id?.toString() || (b.providerId as unknown as { toString: () => string }).toString(),
-        name: providerObj.userId?.name || "",
-        profilePhoto: providerObj.profilePhoto,
-        hourlyRate: providerObj.hourlyRate,
+        _id: p._id.toString(),
+        userId: { name: userName },
+        profilePhoto: p.profilePhoto,
+        hourlyRate: p.hourlyRate,
       };
-      result.providerId = b.providerId as unknown as string;
+      result.providerId = p._id.toString();
     }
 
-    if (b.userId && typeof b.userId === 'object' && ('name' in b.userId || 'email' in b.userId)) {
-      const userObj = b.userId as unknown as { _id?: { toString: () => string }; name?: string; profilePhoto?: string };
-       result.user = {
-         _id: userObj._id?.toString() || (b.userId as unknown as { toString: () => string }).toString(),
-         name: userObj.name,
-         profilePhoto: userObj.profilePhoto
-       };
-       result.userId = b.userId as unknown as string;
+    if (b.userId && typeof b.userId === 'object' && '_id' in b.userId) {
+      const u = b.userId;
+      result.user = {
+        _id: u._id.toString(),
+        name: u.name || "",
+        profilePhoto: u.profilePhoto,
+      };
+      result.userId = u._id.toString();
     }
 
-    if (b.serviceId && typeof b.serviceId === 'object' && ('name' in b.serviceId || 'description' in b.serviceId)) {
-      const serviceObj = b.serviceId as unknown as { _id?: { toString: () => string }; name?: string; description?: string; categoryId?: { toString: () => string } };
+    if (b.serviceId && typeof b.serviceId === 'object' && '_id' in b.serviceId) {
+      const s = b.serviceId;
       result.service = {
-        _id: serviceObj._id?.toString() || (b.serviceId as unknown as { toString: () => string }).toString(),
-        name: serviceObj.name,
-        description: serviceObj.description,
-        categoryId: serviceObj.categoryId?.toString()
+        _id: s._id.toString(),
+        name: s.name || "",
+        description: s.description,
       };
-      result.serviceId = b.serviceId as unknown as string;
+      result.serviceId = s._id.toString();
     }
 
-    if (b.addressId && typeof b.addressId === 'object' && ('label' in b.addressId || 'fullAddress' in b.addressId)) {
-      const addressObj = b.addressId as unknown as { _id?: { toString: () => string }; label?: string; fullAddress?: string; latitude?: number; longitude?: number };
+    if (b.addressId && typeof b.addressId === 'object' && '_id' in b.addressId) {
+      const a = b.addressId;
       result.address = {
-        _id: addressObj._id?.toString() || (b.addressId as unknown as { toString: () => string }).toString(),
-        label: addressObj.label,
-        fullAddress: addressObj.fullAddress,
-        latitude: addressObj.latitude,
-        longitude: addressObj.longitude
+        _id: a._id.toString(),
+        label: a.label || "",
+        fullAddress: a.fullAddress || "",
+        latitude: a.latitude,
+        longitude: a.longitude,
       };
-      result.addressId = b.addressId as unknown as string;
-    }
-    
-    if (b.finalInvoice) {
-      result.finalInvoice = {
-        ...(b.finalInvoice as Record<string, unknown>),
-        _id: (b.finalInvoice as unknown as { _id?: { toString: () => string } })._id?.toString()
-      };
+      result.addressId = a._id.toString();
     }
 
     return result;
   }
 
-  static toArrayResponse(bookings: (IBooking & { toObject?: () => IBooking })[], detailed: boolean = false): (BookingResponseDTO | DetailedBookingResponseDTO)[] {
-    return bookings.map(b => detailed ? this.toDetailedResponse(b)! : this.toResponse(b)!);
+  static toArrayResponse(
+    bookings: (IBooking & { toObject?: () => IBooking })[],
+    detailed = false
+  ): (BookingResponseDTO | DetailedBookingResponseDTO)[] {
+    return bookings.map(b => (detailed ? this.toDetailedResponse(b)! : this.toResponse(b)!));
   }
 }

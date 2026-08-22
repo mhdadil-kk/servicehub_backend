@@ -2,17 +2,14 @@ import { Request, Response } from "express";
 import { IServiceService } from "../interfaces/services/IServiceService";
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
-import { ServiceMapper } from "../mappers/service.mapper";
-import { ProviderProfileMapper } from "../mappers/providerProfile.mapper";
 import { asyncHandler } from "../utils/async-handler";
-
 
 export class ServiceController {
   constructor(private _serviceService: IServiceService) {}
 
   getActiveServices = asyncHandler(async (req: Request, res: Response) => {
     const services = await this._serviceService.getActiveService();
-    res.status(HttpStatusCode.OK).json(createSuccessResponse(ServiceMapper.toArrayResponse(services)));
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(services));
   });
 
   getApprovedProviders = asyncHandler(async (req: Request, res: Response) => {
@@ -31,7 +28,7 @@ export class ServiceController {
     });
 
     res.status(HttpStatusCode.OK).json(createSuccessResponse({
-      providers: ProviderProfileMapper.toArrayResponse(result.providers, true),
+      providers: result.providers,
       total: result.total,
       totalPages: result.totalPages,
       page: result.page,

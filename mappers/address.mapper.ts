@@ -1,16 +1,5 @@
 import { IAddress } from "../types/address.types";
-
-export interface AddressResponseDTO {
-  _id: string;
-  userId: string;
-  label: string;
-  fullAddress: string;
-  latitude?: number;
-  longitude?: number;
-  isDefault: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { AddressResponseDTO } from "../dtos/address.dto";
 
 export class AddressMapper {
   static toResponse(address: IAddress & { toObject?: () => IAddress }): AddressResponseDTO | null {
@@ -19,8 +8,8 @@ export class AddressMapper {
     const a = typeof address.toObject === 'function' ? address.toObject() : address;
 
     return {
-      _id: (a as IAddress & { _id?: { toString: () => string }; id?: string })._id?.toString() || (a as IAddress & { id?: string }).id || "",
-      userId: a.userId.toString(),
+      _id: a._id?.toString() || a.id || "",
+      userId: a.userId ? a.userId.toString() : "",
       label: a.label,
       fullAddress: a.fullAddress,
       latitude: a.latitude,

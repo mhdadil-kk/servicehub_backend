@@ -85,14 +85,15 @@ export const adminService = new AdminService(
 
 export const paymentService = new PaymentService(
   bookingRepository,
+  transactionRepository,
+  paymentGateway,
   walletService,
-  notificationService,
-  paymentGateway
+  providerProfileRepository
 );
 
 export const providerService   = new ProviderService(providerProfileRepository, providerAvailabilityRepository, userRepository);
 export const reviewService     = new ReviewService(reviewRepository, bookingRepository, providerProfileRepository);
-export const reportService     = new ReportService(reportRepository, notificationService, userRepository);
+export const reportService     = new ReportService(reportRepository,userRepository,bookingRepository,notificationService);
 export const addressService    = new AddressService(addressRepository);
 export const serviceService    = new ServiceService(serviceRepository, userRepository, providerProfileRepository);
 export const dashboardService  = new DashboardService(bookingRepository, transactionRepository, providerProfileRepository);

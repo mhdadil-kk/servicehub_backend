@@ -21,6 +21,7 @@ export interface IProviderProfileRepository {
   findOrCreateByUserId(userId: string): Promise<IProviderProfile>;
   updateByUserId(userId: string, data: Partial<IProviderProfile>): Promise<IProviderProfile | null>;
   updateById(id: string, data: Partial<IProviderProfile>): Promise<IProviderProfile | null>;
+  updateRatingAndReviews(providerId: string, averageRating: number, totalReviews: number): Promise<void>;
   incrementRating(providerProfileId: string, rating: number): Promise<void>;
   findApprovedProviders(options: FindApprovedProvidersOptions): Promise<{ providers: IProviderProfile[]; total: number }>;
   findPendingProviders(dateFilter?: mongoose.FilterQuery<IProviderProfile>): Promise<IProviderProfile[]>;

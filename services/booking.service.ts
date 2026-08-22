@@ -1,69 +1,61 @@
-import mongoose from "mongoose";
-import { IBookingRepository, AvailableSlot } from "../interfaces/repositories/IBookingRepository";
+import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
 import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
 import { IProviderAvailabilityRepository } from "../interfaces/repositories/IProviderAvailabilityRepository";
 import { IConversationRepository } from "../interfaces/repositories/IConversationRepository";
 import { IMessageRepository } from "../interfaces/repositories/IMessageRepository";
 import { INotificationService } from "../interfaces/services/INotificationService";
+import { IWalletService } from "../interfaces/services/IWalletService";
 import { IMailer } from "../utils/mailer";
+import { IBookingService, CreateBookingInput } from "../interfaces/services/IBookingService";
 import { IBooking } from "../types/booking.types";
 import { IProviderProfile } from "../types/providerProfile.types";
-import { BadRequestError, NotFoundError, ForbiddenError } from "../utils/error";
+import { NotFoundError, BadRequestError, ForbiddenError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
+import { AvailableSlotDTO, DetailedBookingResponseDTO } from "../dtos/booking.dto";
+import { BookingMapper } from "../mappers/booking.mapper";
+import mongoose from "mongoose";
 import { ACTIVE_SLOT_BOOKING_STATUSES } from "../constants/statuses";
-import { logger } from "../utils/logger";
-import { IBookingService, CreateBookingInput } from "../interfaces/services/IBookingService";
-import { IWalletService } from "../interfaces/services/IWalletService";
-import { PLATFORM_BOOKING_FEE } from "../constants/payment.constants";
 
 export class BookingService implements IBookingService {
-  private _bookingRepository: IBookingRepository;
-  private _providerProfileRepository: IProviderProfileRepository;
-  private _providerAvailabilityRepository: IProviderAvailabilityRepository;
-  private _conversationRepository: IConversationRepository;
-  private _messageRepository: IMessageRepository;
-  private _notificationService: INotificationService;
-  private _mailer: IMailer;
-  private _walletService: IWalletService;
   constructor(
-    bookingRepository: IBookingRepository,
-    providerProfileRepository: IProviderProfileRepository,
-    providerAvailabilityRepository: IProviderAvailabilityRepository,
-    conversationRepository: IConversationRepository,
-    messageRepository: IMessageRepository,
-    notificationService: INotificationService,
-    mailer: IMailer,
-    walletService: IWalletService
-  ) {
-    this._bookingRepository = bookingRepository;
-    this._providerProfileRepository = providerProfileRepository;
-    this._providerAvailabilityRepository = providerAvailabilityRepository;
-    this._conversationRepository = conversationRepository;
-    this._messageRepository = messageRepository;
-    this._notificationService = notificationService;
-    this._mailer = mailer;
-    this._walletService = walletService;
-}
+    private _bookingRepository: IBookingRepository,
+    private _providerProfileRepository: IProviderProfileRepository,
+    private _providerAvailabilityRepository: IProviderAvailabilityRepository,
+    private _conversationRepository: IConversationRepository,
+    private _messageRepository: IMessageRepository,
+    private _notificationService: INotificationService,
+    private _mailer: IMailer,
+    private _walletService: IWalletService
+  ) { }
 
-  async getAvailableSlots(providerProfileId: string, dateStr: string): Promise<AvailableSlot[]> {
-    const availability = await this._providerAvailabilityRepository.findByProviderId(providerProfileId);
+  async getAvailableSlots(providerId: string, dateStr: string): Promise<AvailableSlotDTO[]> {
+    const availability = await this._providerAvailabilityRepository.findByProviderId(providerId);
     if (!availability) return [];
 
     if (availability.startDate && dateStr < availability.startDate) return [];
     if (availability.endDate && dateStr > availability.endDate) return [];
 
-    const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const weekday = weekdays[new Date(dateStr).getDay()];
+    const weekdays = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ] as const;
 
-    let slots: { id: string; start: string; end: string }[] = [];
+    const weekday = weekdays[new Date(`${dateStr}T00:00:00`).getDay()];
+
+    let slots: { id?: string; start: string; end: string }[] = [];
     let isAvailable = false;
 
-    const override = availability.overrides.find((ov) => ov.date === dateStr);
+    const override = availability.overrides?.find((ov) => ov.date === dateStr);
     if (override) {
       isAvailable = override.isAvailable;
       slots = override.isAvailable ? override.slots : [];
     } else {
-      const daySchedule = availability.weeklySchedule[weekday as keyof typeof availability.weeklySchedule];
+      const daySchedule = availability.weeklySchedule[weekday];
       if (daySchedule) {
         isAvailable = daySchedule.isAvailable;
         slots = daySchedule.isAvailable ? daySchedule.slots : [];
@@ -72,373 +64,368 @@ export class BookingService implements IBookingService {
 
     if (!isAvailable || slots.length === 0) return [];
 
-    const activeBookings = await this._bookingRepository.findActiveByProviderAndDate(
-      providerProfileId,
+    const bookings = await this._bookingRepository.findActiveByProviderAndDate(
+      providerId,
       dateStr,
       [...ACTIVE_SLOT_BOOKING_STATUSES]
     );
 
     return slots.map((slot) => ({
-      id: slot.id,
       start: slot.start,
       end: slot.end,
-      isBooked: activeBookings.some(
+      isBooked: bookings.some(
         (b) => b.slot.start === slot.start && b.slot.end === slot.end
       ),
     }));
   }
 
-  async createBooking(userId: string, data: CreateBookingInput): Promise<IBooking> {
-    const { providerId, serviceId, addressId, date, slot, notes, rescheduledFrom } = data;
+  async createBooking(userId: string, data: CreateBookingInput): Promise<DetailedBookingResponseDTO> {
+    const existing = await this._bookingRepository.findSlotBooking(data.providerId, data.date, data.slot.start);
+    if (existing) throw new BadRequestError(ERROR_MESSAGES.SLOT_ALREADY_BOOKED);
 
-    if (!providerId || !serviceId || !addressId || !date || !slot?.start || !slot?.end) {
-      throw new BadRequestError(ERROR_MESSAGES.BOOKING_DETAILS_REQUIRED);
-    }
-
-    const availableSlots = await this.getAvailableSlots(providerId, date);
-    const matchingSlot = availableSlots.find((s) => s.start === slot.start && s.end === slot.end);
-
-    if (!matchingSlot) throw new BadRequestError(ERROR_MESSAGES.SLOT_NOT_AVAILABLE);
-    if (matchingSlot.isBooked) throw new BadRequestError(ERROR_MESSAGES.SLOT_ALREADY_BOOKED);
-
-    const savedBooking = await this._bookingRepository.create({
-      userId,
-      providerId,
-      serviceId,
-      addressId,
-      date,
-      slot,
-      notes,
-      rescheduledFrom,
+    const booking = await this._bookingRepository.create({
+      userId: new mongoose.Types.ObjectId(userId),
+      providerId: new mongoose.Types.ObjectId(data.providerId),
+      serviceId: new mongoose.Types.ObjectId(data.serviceId),
+      addressId: new mongoose.Types.ObjectId(data.addressId),
+      date: data.date,
+      slot: data.slot,
       status: "pending",
-    } as unknown as Partial<IBooking>);
+      notes: data.notes,
+    });
 
-    try {
-      const provProfile = await this._providerProfileRepository.findById(providerId);
-      if (provProfile) {
-        const providerUserId = provProfile.userId.toString();
-        let conversation = await this._conversationRepository.findByParticipants([userId, providerUserId]);
+    const bookingIdStr = booking._id?.toString() || "";
+    const savedBooking = await this._bookingRepository.findByIdWithProviderAndUser(bookingIdStr);
+    if (!savedBooking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-        if (!conversation) {
-          conversation = await this._conversationRepository.createForBooking(
-            [userId, providerUserId],
-            savedBooking._id.toString()
+    const providerProfile = await this._providerProfileRepository.findById(data.providerId);
+    if (providerProfile) {
+      await this._notificationService.create({
+        userId: providerProfile.userId.toString(),
+        title: "New Booking Request",
+        message: `You have received a new booking request for ${data.date} at ${data.slot.start}.`,
+        type: "info",
+        relatedId: savedBooking._id?.toString(),
+      });
+
+      const existingConversations =
+        await this._conversationRepository.findDirectBetweenUsers(
+          userId,
+          providerProfile.userId.toString()
+        );
+
+      let conversationId: string;
+
+      if (existingConversations.length === 0) {
+        const newConvo =
+          await this._conversationRepository.createForBooking(
+            [userId, providerProfile.userId.toString()],
+            bookingIdStr
           );
-        } else {
-          await this._conversationRepository.attachBooking(
-            conversation.id,
-            savedBooking._id.toString()
-          );
-        }
 
-        await this._messageRepository.createBookingCardMessage({
-          conversationId: conversation.id,
-          bookingId: savedBooking._id.toString(),
-          senderId: userId,
-          senderRole: "user",
-        });
+        conversationId = newConvo._id?.toString() ?? newConvo.id;
+      } else {
+        const conversation = existingConversations[0];
 
-        await this._notificationService.create({
-          userId: providerUserId,
-          title: "New Booking Request",
-          message: `You have received a new booking request for ${date} at ${slot.start}.`,
-          type: "info",
-          relatedId: savedBooking._id.toString(),
-        });
+        conversationId =
+          conversation._id?.toString() ?? conversation.id;
+
+        await this._conversationRepository.attachBooking(
+          conversationId,
+          bookingIdStr
+        );
       }
-    } catch (e) {
-      logger.warn(`Failed to bootstrap chat/notification for booking ${savedBooking._id}: ${e}`);
+
+      await this._messageRepository.createBookingCardMessage({
+        conversationId,
+        bookingId: bookingIdStr,
+        senderId: userId,
+        senderRole: "user",
+      });
     }
 
-    return savedBooking;
+    return BookingMapper.toDetailedResponse(savedBooking)!;
   }
 
-  async getUserBookings(userId: string): Promise<IBooking[]> {
-    return this._bookingRepository.findByUserIdPopulated(userId);
+  async getUserBookings(userId: string): Promise<DetailedBookingResponseDTO[]> {
+    const bookings = await this._bookingRepository.findByUserIdPopulated(userId);
+    return bookings.map((b) => BookingMapper.toDetailedResponse(b)!);
   }
 
-  async getProviderBookings(providerUserId: string): Promise<IBooking[]> {
+  async getProviderBookings(providerUserId: string): Promise<DetailedBookingResponseDTO[]> {
     const profile = await this.getProviderProfileOrThrow(providerUserId);
-    return this._bookingRepository.findByProviderIdPopulated(profile._id.toString());
+    const bookings = await this._bookingRepository.findByProviderIdPopulated(profile._id.toString());
+    return bookings.map((b) => BookingMapper.toDetailedResponse(b)!);
   }
 
-  async getBookingDetail(bookingId: string, userId: string, role: string): Promise<IBooking> {
-    let booking: IBooking | null = null;
-
-    if (role === "user") {
-      booking = await this._bookingRepository.findDetailForUser(bookingId, userId);
-    } else if (role === "provider") {
-      const profile = await this.getProviderProfileOrThrow(userId);
-      booking = await this._bookingRepository.findDetailForProvider(bookingId, profile._id.toString());
-    }
-
-    if (!booking) {
-      throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
-    }
-
-    return booking;
-  }
-
-  async acceptBooking(bookingId: string, providerUserId: string): Promise<IBooking> {
-    const profile = await this.getProviderProfileOrThrow(providerUserId);
-    const booking = await this._bookingRepository.findOneForProvider(bookingId, profile._id.toString());
+  async getBookingDetail(bookingId: string, userId: string, role: string): Promise<DetailedBookingResponseDTO> {
+    const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
+    if (role === "admin") return BookingMapper.toDetailedResponse(booking)!;
+
+    if (role === "user") {
+      const customer = this.getPopulatedUser(booking);
+      if (customer.id !== userId) throw new ForbiddenError(ERROR_MESSAGES.UNAUTHORIZED_BOOKING_ACCESS);
+      return BookingMapper.toDetailedResponse(booking)!;
+    }
+
+    if (role === "provider") {
+      const profile = await this.getProviderProfileOrThrow(userId);
+      this.assertProviderOwnsBooking(booking, profile);
+      return BookingMapper.toDetailedResponse(booking)!;
+    }
+
+    throw new ForbiddenError(ERROR_MESSAGES.UNAUTHORIZED_BOOKING_ACCESS);
+  }
+
+  async acceptBooking(bookingId: string, providerUserId: string): Promise<DetailedBookingResponseDTO> {
+    const profile = await this.getProviderProfileOrThrow(providerUserId);
+    const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
+    if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+
+    this.assertProviderOwnsBooking(booking, profile);
+
     if (booking.status !== "pending") {
-      throw new BadRequestError(ERROR_MESSAGES.ONLY_PENDING_CAN_ACCEPT);
+      throw new BadRequestError(ERROR_MESSAGES.BOOKING_NOT_PENDING);
     }
 
     const updated = await this._bookingRepository.updateStatus(bookingId, { status: "awaiting_payment" });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
+    const customer = this.getPopulatedUser(booking);
     await this._notificationService.create({
-      userId: booking.userId.toString(),
-      title: "Booking Accepted!",
-      message: "Provider accepted! Pay the ₹100 booking fee to confirm your slot.",
+      userId: customer.id,
+      title: "Booking Accepted",
+      message: `Your booking for ${booking.date} at ${booking.slot.start} has been accepted. Please make the advance payment.`,
       type: "success",
       relatedId: bookingId,
     });
 
-    return updated;
+    return BookingMapper.toDetailedResponse(updated)!;
   }
 
-  async updateBookingStatus(
-    bookingId: string,
-    providerUserId: string,
-    status: "confirmed" | "completed" | "cancelled"
-  ): Promise<IBooking> {
+  async updateBookingStatus(bookingId: string, providerUserId: string, status: IBooking["status"]): Promise<DetailedBookingResponseDTO> {
     const profile = await this.getProviderProfileOrThrow(providerUserId);
-    const booking = await this._bookingRepository.findOneForProvider(bookingId, profile._id.toString());
+    const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    if (status === "completed" && booking.status !== "confirmed") {
-      throw new BadRequestError(ERROR_MESSAGES.ONLY_CONFIRMED_CAN_COMPLETE);
-    }
+    this.assertProviderOwnsBooking(booking, profile);
 
     const updated = await this._bookingRepository.updateStatus(bookingId, { status });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    if (status === "confirmed") {
-      await this._notificationService.create({
-        userId: booking.userId.toString(),
-        title: "Booking Confirmed!",
-        message: `Your booking for ${booking.date} at ${booking.slot.start} has been confirmed.`,
-        type: "success",
-        relatedId: bookingId,
-      });
-    } else if (status === "cancelled") {
-      await this._notificationService.create({
-        userId: booking.userId.toString(),
-        title: "Booking Cancelled",
-        message: `Your booking for ${booking.date} has been cancelled by the provider.`,
-        type: "warning",
-        relatedId: bookingId,
-      });
-    }
-
-    return updated;
+    return BookingMapper.toDetailedResponse(updated)!;
   }
 
-  async cancelBooking(bookingId: string, userId: string, role: string, reason: string): Promise<IBooking> {
-    let booking: IBooking | null;
-
-    if (role === "user") {
-      booking = await this._bookingRepository.findOneForUser(bookingId, userId);
-    } else {
-      const profile = await this.getProviderProfileOrThrow(userId);
-      booking = await this._bookingRepository.findOneForProvider(bookingId, profile._id.toString());
-    }
-
+  async cancelBooking(bookingId: string, userId: string, role: string, reason?: string): Promise<DetailedBookingResponseDTO> {
+    const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    if (booking.status === "cancelled" || booking.status === "completed") {
-      throw new BadRequestError(`${ERROR_MESSAGES.CANNOT_CANCEL_BOOKING} Current status: ${booking.status}`);
+    const nonCancellableStatuses = ["completed", "completed_pending_payment", "cancelled"];
+    if (nonCancellableStatuses.includes(booking.status)) {
+      throw new BadRequestError(ERROR_MESSAGES.CANNOT_CANCEL_COMPLETED);
     }
 
-    if (this.hoursUntilBooking(booking.date, booking.slot.start) < 2) {
-      throw new BadRequestError(ERROR_MESSAGES.CANCEL_WITHIN_2_HOURS);
+    const hoursUntil = this.hoursUntilBooking(booking.date, booking.slot.start);
+
+    let refundAmount = 0;
+    const advancePaid = booking.paymentStatus === "paid" || booking.paymentStatus === "fully_paid";
+
+    if (role === "user") {
+      const customer = this.getPopulatedUser(booking);
+      if (customer.id !== userId) throw new ForbiddenError(ERROR_MESSAGES.UNAUTHORIZED_BOOKING_ACCESS);
+
+      if (advancePaid) {
+        if (hoursUntil >= 24) refundAmount = 100;
+        else if (hoursUntil >= 12) refundAmount = 50;
+      }
+    } else if (role === "provider") {
+      const profile = await this.getProviderProfileOrThrow(userId);
+      this.assertProviderOwnsBooking(booking, profile);
+      if (advancePaid) refundAmount = 100;
     }
 
     const updated = await this._bookingRepository.updateStatus(bookingId, {
       status: "cancelled",
-      cancelledBy: role === "user" ? "user" : "provider",
-      cancellationReason: reason || "No reason provided",
+      cancelledBy: role as "user" | "provider",
+      cancellationReason: reason,
+      paymentStatus: refundAmount > 0 ? "failed" : booking.paymentStatus,
     });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    if (booking.status === "confirmed" || booking.status === "awaiting_user_confirmation") {
+    const customer = this.getPopulatedUser(booking);
+
+    if (refundAmount > 0) {
       await this._walletService.credit(
-        booking.userId.toString(),
-        PLATFORM_BOOKING_FEE,
-        `Refund for cancelled booking`,
-        bookingId
+        customer.id,
+        refundAmount,
+        `Refund for cancelled booking #${bookingId.slice(-6)} (${refundAmount === 100 ? "Full" : "Partial"} refund)`
       );
-      
-      await this._notificationService.create({
-        userId: booking.userId.toString(),
-        title: "Refund Processed",
-        message: `₹${PLATFORM_BOOKING_FEE} has been refunded to your wallet for the cancelled booking.`,
-        type: "success",
-        relatedId: bookingId,
-      });
     }
 
-    if (role === "user") {
-      const provProfile = await this._providerProfileRepository.findById(booking.providerId.toString());
-      if (provProfile) {
-        await this._notificationService.create({
-          userId: provProfile.userId.toString(),
-          title: "Booking Cancelled by Customer",
-          message: `A customer cancelled their booking for ${booking.date} at ${booking.slot.start}.`,
-          type: "warning",
-          relatedId: bookingId,
-        });
-      }
-    } else {
+    const cancelledByLabel = role === "user" ? "customer" : "provider";
+    const prov = booking.providerId;
+    const recipientUserId =
+      role === "user"
+        ? (typeof prov === "object" && prov !== null && "userId" in prov
+          ? String(prov.userId)
+          : undefined)
+        : customer.id;
+
+    if (recipientUserId) {
       await this._notificationService.create({
-        userId: booking.userId.toString(),
-        title: "Booking Cancelled by Provider",
-        message: `Your provider cancelled the booking for ${booking.date}. Reason: ${reason || "No reason provided"}.`,
+        userId: recipientUserId,
+        title: "Booking Cancelled",
+        message: `Booking for ${booking.date} at ${booking.slot.start} was cancelled by the ${cancelledByLabel}.${refundAmount > 0 ? ` A refund of Rs.${refundAmount} has been processed to the wallet.` : ""
+          }`,
         type: "warning",
         relatedId: bookingId,
       });
     }
 
-    return updated;
+    return BookingMapper.toDetailedResponse(updated)!;
   }
 
-  async rescheduleBooking(
-    bookingId: string,
-    userId: string,
-    data: Partial<CreateBookingInput>
-  ): Promise<IBooking> {
-    const originalBooking = await this._bookingRepository.findOneForUser(bookingId, userId);
-    if (!originalBooking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
-
-    if (originalBooking.status === "cancelled" || originalBooking.status === "completed") {
-      throw new BadRequestError(`${ERROR_MESSAGES.CANNOT_RESCHEDULE_BOOKING} Current status: ${originalBooking.status}`);
-    }
-
-    if (this.hoursUntilBooking(originalBooking.date, originalBooking.slot.start) < 2) {
-      throw new BadRequestError(ERROR_MESSAGES.RESCHEDULE_WITHIN_2_HOURS);
-    }
-
-    await this._bookingRepository.updateStatus(bookingId, {
-      status: "rescheduled",
-      cancelledBy: "user",
-      cancellationReason: "Rescheduled by customer",
-    });
-
-    return this.createBooking(userId, {
-      providerId: originalBooking.providerId.toString(),
-      serviceId: originalBooking.serviceId.toString(),
-      addressId: data.addressId || originalBooking.addressId.toString(),
-      date: data.date!,
-      slot: data.slot!,
-      notes: data.notes || originalBooking.notes,
-      rescheduledFrom: originalBooking._id.toString(),
-    });
-  }
-
-  async providerRescheduleBooking(
-    bookingId: string,
-    providerUserId: string,
-    data: Partial<CreateBookingInput>
-  ): Promise<IBooking> {
-    const profile = await this.getProviderProfileOrThrow(providerUserId);
-    const originalBooking = await this._bookingRepository.findOneForProvider(bookingId, profile._id.toString());
-    
-    if (!originalBooking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
-
-    if (originalBooking.status === "cancelled" || originalBooking.status === "completed") {
-      throw new BadRequestError(`${ERROR_MESSAGES.CANNOT_RESCHEDULE_BOOKING} Current status: ${originalBooking.status}`);
-    }
-
-    if (this.hoursUntilBooking(originalBooking.date, originalBooking.slot.start) < 2) {
-      throw new BadRequestError(ERROR_MESSAGES.RESCHEDULE_WITHIN_2_HOURS);
-    }
-
-    await this._bookingRepository.updateStatus(bookingId, {
-      status: "rescheduled",
-      cancelledBy: "provider",
-      cancellationReason: "Rescheduled by provider",
-    });
-
-    const newBooking = await this.createBooking(originalBooking.userId.toString(), {
-      providerId: originalBooking.providerId.toString(),
-      serviceId: originalBooking.serviceId.toString(),
-      addressId: data.addressId || originalBooking.addressId.toString(),
-      date: data.date!,
-      slot: data.slot!,
-      notes: data.notes || originalBooking.notes,
-      rescheduledFrom: originalBooking._id.toString(),
-    });
-
-    await this._bookingRepository.updateStatus(newBooking._id.toString(), {
-      status: "awaiting_user_confirmation",
-    });
-    newBooking.status = "awaiting_user_confirmation";
-
-    await this._bookingRepository.updateStatus(bookingId, {
-      rescheduledTo: newBooking._id,
-    } as Partial<IBooking>);
-
-    await this._notificationService.create({
-      userId: originalBooking.userId.toString(),
-      title: "Booking Rescheduled",
-      message: `Your provider rescheduled the booking for ${data.date} at ${data.slot!.start}. Please accept or reject this new time.`,
-      type: "warning",
-      relatedId: newBooking._id.toString(),
-    });
-
-    return newBooking;
-  }
-
-  async customerAcceptReschedule(bookingId: string, userId: string): Promise<IBooking> {
+  async rescheduleBooking(bookingId: string, userId: string, data: Partial<CreateBookingInput>): Promise<DetailedBookingResponseDTO> {
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
-    
-    const customer = booking.userId as unknown as { _id: mongoose.Types.ObjectId };
-    if (customer._id.toString() !== userId) throw new BadRequestError("Unauthorized");
-    
+
+    const customer = this.getPopulatedUser(booking);
+    if (customer.id !== userId) throw new ForbiddenError(ERROR_MESSAGES.UNAUTHORIZED_BOOKING_ACCESS);
+
+    if (booking.status === "in_progress" || booking.status === "completed" || booking.status === "completed_pending_payment") {
+      throw new BadRequestError(ERROR_MESSAGES.CANNOT_RESCHEDULE_IN_PROGRESS);
+    }
+
+    const hoursUntil = this.hoursUntilBooking(booking.date, booking.slot.start);
+    if (hoursUntil < 4) throw new BadRequestError(ERROR_MESSAGES.RESCHEDULE_TOO_LATE);
+
+    const newDate = data.date || booking.date;
+    const newSlot = data.slot || booking.slot;
+
+    const prov = booking.providerId;
+    const providerProfileId = typeof prov === "object" && prov !== null && "userId" in prov
+      ? prov._id.toString()
+      : String(prov);
+
+    const existing = await this._bookingRepository.findSlotBooking(
+      providerProfileId,
+      newDate,
+      newSlot.start
+    );
+    if (existing && existing._id?.toString() !== bookingId) {
+      throw new BadRequestError(ERROR_MESSAGES.SLOT_ALREADY_BOOKED);
+    }
+
+    const updated = await this._bookingRepository.updateStatus(bookingId, {
+      date: newDate,
+      slot: newSlot,
+      addressId: data.addressId ? new mongoose.Types.ObjectId(data.addressId) : booking.addressId,
+      notes: data.notes !== undefined ? data.notes : booking.notes,
+    });
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+
+    const provProfile = await this._providerProfileRepository.findById(providerProfileId);
+    if (provProfile) {
+      await this._notificationService.create({
+        userId: provProfile.userId.toString(),
+        title: "Booking Rescheduled",
+        message: `Customer rescheduled booking to ${newDate} at ${newSlot.start}.`,
+        type: "info",
+        relatedId: bookingId,
+      });
+    }
+
+    return BookingMapper.toDetailedResponse(updated)!;
+  }
+
+  async providerRescheduleBooking(bookingId: string, providerUserId: string, data: Partial<CreateBookingInput>): Promise<DetailedBookingResponseDTO> {
+    const profile = await this.getProviderProfileOrThrow(providerUserId);
+    const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
+    if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+
+    this.assertProviderOwnsBooking(booking, profile);
+
+    const existing = await this._bookingRepository.findSlotBooking(
+      profile._id.toString(),
+      data.date!,
+      data.slot!.start
+    );
+    if (existing && existing._id?.toString() !== bookingId) {
+      throw new BadRequestError("That slot is already booked");
+    }
+
+    const updated = await this._bookingRepository.updateStatus(bookingId, {
+      status: "awaiting_user_confirmation",
+      date: data.date,
+      slot: data.slot,
+    });
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+
+    const customer = this.getPopulatedUser(booking);
+    await this._notificationService.create({
+      userId: customer.id,
+      title: "Reschedule Request",
+      message: `The provider requested to reschedule your booking to ${data.date} at ${data.slot!.start}. Please accept or reject.`,
+      type: "info",
+      relatedId: bookingId,
+    });
+
+    return BookingMapper.toDetailedResponse(updated)!;
+  }
+
+  async customerAcceptReschedule(bookingId: string, userId: string): Promise<DetailedBookingResponseDTO> {
+    const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
+    if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
+
+    const customer = this.getPopulatedUser(booking);
+    if (customer.id !== userId) throw new BadRequestError("Unauthorized");
+
     if (booking.status !== "awaiting_user_confirmation") throw new BadRequestError("Booking is not awaiting confirmation");
 
     const updated = await this._bookingRepository.updateStatus(bookingId, { status: "confirmed" });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    const providerObj = booking.providerId as unknown as { _id: mongoose.Types.ObjectId };
-    const provProfile = await this._providerProfileRepository.findById(providerObj._id.toString());
+    const prov = booking.providerId;
+    const providerProfileId = typeof prov === "object" && prov !== null && "userId" in prov
+      ? prov._id.toString()
+      : String(prov);
+    const provProfile = await this._providerProfileRepository.findById(providerProfileId);
     if (provProfile) {
       await this._notificationService.create({
         userId: provProfile.userId.toString(),
         title: "Reschedule Accepted",
-        message: `The customer accepted the new booking time.`,
+        message: `The customer accepted the new time: ${booking.date} at ${booking.slot.start}.`,
         type: "success",
         relatedId: bookingId,
       });
     }
 
-    return updated;
+    return BookingMapper.toDetailedResponse(updated)!;
   }
 
-  async customerRejectReschedule(bookingId: string, userId: string): Promise<IBooking> {
+  async customerRejectReschedule(bookingId: string, userId: string): Promise<DetailedBookingResponseDTO> {
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
-    
-    const customer = booking.userId as unknown as { _id: mongoose.Types.ObjectId };
-    if (customer._id.toString() !== userId) throw new BadRequestError("Unauthorized");
-    
+
+    const customer = this.getPopulatedUser(booking);
+    if (customer.id !== userId) throw new BadRequestError("Unauthorized");
+
     if (booking.status !== "awaiting_user_confirmation") throw new BadRequestError("Booking is not awaiting confirmation");
 
-    const updated = await this._bookingRepository.updateStatus(bookingId, { 
+    const updated = await this._bookingRepository.updateStatus(bookingId, {
       status: "cancelled",
       cancelledBy: "user",
-      cancellationReason: "Customer rejected the rescheduled time"
+      cancellationReason: "Customer rejected the rescheduled time",
     });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    const providerObj = booking.providerId as unknown as { _id: mongoose.Types.ObjectId };
-    const provProfile = await this._providerProfileRepository.findById(providerObj._id.toString());
+    const prov = booking.providerId;
+    const providerProfileId = typeof prov === "object" && prov !== null && "userId" in prov
+      ? prov._id.toString()
+      : String(prov);
+    const provProfile = await this._providerProfileRepository.findById(providerProfileId);
     if (provProfile) {
       await this._notificationService.create({
         userId: provProfile.userId.toString(),
@@ -449,11 +436,10 @@ export class BookingService implements IBookingService {
       });
     }
 
-    return updated;
+    return BookingMapper.toDetailedResponse(updated)!;
   }
 
-
-  async generateArrivalOtp(bookingId: string, providerUserId: string): Promise<IBooking> {
+  async generateArrivalOtp(bookingId: string, providerUserId: string): Promise<DetailedBookingResponseDTO> {
     const profile = await this.getProviderProfileOrThrow(providerUserId);
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
@@ -481,15 +467,15 @@ export class BookingService implements IBookingService {
       await this._mailer.sendBookingOTP(
         customer.email,
         "Provider Arrived - Verification Code",
-        "Your service provider has arrived at the location.", 
+        "Your service provider has arrived at the location.",
         otp
       );
     }
 
-    return updated;
+    return BookingMapper.toDetailedResponse(updated)!;
   }
 
-  async verifyArrivalOtp(bookingId: string, providerUserId: string, otp: string): Promise<IBooking> {
+  async verifyArrivalOtp(bookingId: string, providerUserId: string, otp: string): Promise<DetailedBookingResponseDTO> {
     const profile = await this.getProviderProfileOrThrow(providerUserId);
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
@@ -510,14 +496,14 @@ export class BookingService implements IBookingService {
     });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    return updated;
+    return BookingMapper.toDetailedResponse(updated)!;
   }
 
   async generateCompletionOtp(
     bookingId: string,
     providerUserId: string,
     invoiceData: { baseCharge: number; extraCharges?: { description: string; amount: number }[] }
-  ): Promise<IBooking> {
+  ): Promise<DetailedBookingResponseDTO> {
     const profile = await this.getProviderProfileOrThrow(providerUserId);
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
@@ -548,7 +534,7 @@ export class BookingService implements IBookingService {
     await this._notificationService.create({
       userId: customer.id,
       title: "Job Completed - Final Invoice",
-      message: `The provider has marked the job as complete. Total: ₹${finalTotal}. Your Completion OTP is ${otp}.`,
+      message: `The provider has marked the job as complete. Total: Rs.${finalTotal}. Your Completion OTP is ${otp}.`,
       type: "otp",
       relatedId: bookingId,
     });
@@ -557,15 +543,15 @@ export class BookingService implements IBookingService {
       await this._mailer.sendBookingOTP(
         customer.email,
         "Job Completed - Verification Code",
-        `Your service provider has completed the job. The final invoice amount is ₹${finalTotal}.`,
+        `Your service provider has completed the job. The final invoice amount is Rs.${finalTotal}.`,
         otp
       );
     }
 
-    return updated;
+    return BookingMapper.toDetailedResponse(updated)!;
   }
 
-  async verifyCompletionOtp(bookingId: string, providerUserId: string, otp: string): Promise<IBooking> {
+  async verifyCompletionOtp(bookingId: string, providerUserId: string, otp: string): Promise<DetailedBookingResponseDTO> {
     const profile = await this.getProviderProfileOrThrow(providerUserId);
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
@@ -586,7 +572,7 @@ export class BookingService implements IBookingService {
     });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    return updated;
+    return BookingMapper.toDetailedResponse(updated)!;
   }
 
   private async getProviderProfileOrThrow(providerUserId: string): Promise<IProviderProfile> {
@@ -596,11 +582,11 @@ export class BookingService implements IBookingService {
   }
 
   private assertProviderOwnsBooking(booking: IBooking, profile: IProviderProfile): void {
-    const providerIdObj = booking.providerId as unknown as { _id?: mongoose.Types.ObjectId };
-    const bookingProviderId = providerIdObj && providerIdObj._id 
-      ? providerIdObj._id.toString() 
-      : booking.providerId?.toString();
-      
+    const prov = booking.providerId;
+    const bookingProviderId = typeof prov === "object" && prov !== null && "userId" in prov
+      ? prov._id.toString()
+      : String(prov);
+
     if (bookingProviderId !== profile._id.toString()) {
       throw new ForbiddenError(ERROR_MESSAGES.UNAUTHORIZED_PROVIDER_BOOKING);
     }
@@ -621,8 +607,7 @@ export class BookingService implements IBookingService {
       return { id: userId.toString() };
     }
     if (typeof userId === "object" && userId !== null && "_id" in userId) {
-      const populated = userId as mongoose.Types.ObjectId & { email?: string };
-      return { id: populated._id.toString(), email: populated.email };
+      return { id: userId._id.toString(), email: userId.email };
     }
     return { id: String(userId) };
   }

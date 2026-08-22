@@ -6,10 +6,10 @@ export interface IProviderDocument {
 }
 
 export interface IProviderProfile extends Document {
-  userId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId | { _id: mongoose.Types.ObjectId; name?: string; email?: string; phone?: string; profilePhoto?: string };
   bio?: string;
   profilePhoto?: string;
-  serviceId?: mongoose.Types.ObjectId;
+  serviceId?: mongoose.Types.ObjectId | { _id: mongoose.Types.ObjectId; name?: string; description?: string };
   hourlyRate?: number;
   serviceRadius?: number;
   address?: string;                
@@ -25,7 +25,7 @@ export interface IProviderProfile extends Document {
     accountHolderName: string;
     bankName: string;
     accountNumber: string;
-    routingNumber: string;
+    routingNumber?: string;
   };
   averageRating?: number;
   totalReviews?: number;

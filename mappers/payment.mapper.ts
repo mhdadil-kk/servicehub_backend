@@ -1,8 +1,9 @@
-import { BookingMapper } from "./booking.mapper";
 import { IBooking } from "../types/booking.types";
+import { BookingMapper } from "./booking.mapper";
+import { CheckoutResultDTO, WebhookResultDTO } from "../dtos/payment.dto";
 
 export class PaymentMapper {
-  static toCheckoutResponse(result: { id: string; url: string | null; amount_total: number | null } | null) {
+  static toCheckoutResponse(result: { id: string; url: string | null; amount_total: number | null } | null): CheckoutResultDTO | null {
     if (!result) return null;
     return {
       sessionId: result.id,
@@ -11,7 +12,7 @@ export class PaymentMapper {
     };
   }
 
-  static toWebhookResponse(result: { booking: IBooking | null; alreadyProcessed?: boolean } | null) {
+  static toWebhookResponse(result: { booking: IBooking | null; alreadyProcessed?: boolean } | null): WebhookResultDTO | null {
     if (!result) return null;
     return {
       booking: result.booking ? BookingMapper.toResponse(result.booking) : null,

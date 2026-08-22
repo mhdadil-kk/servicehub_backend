@@ -19,3 +19,15 @@ export const UpdateAddressSchema = z.object({
     isDefault: z.boolean().optional(),
   }),
 });
+
+export interface AddressResponseDTO {
+  _id: string;
+  userId: string;
+  label: string;
+  fullAddress: string;
+  latitude?: number;
+  longitude?: number;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

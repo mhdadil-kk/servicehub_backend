@@ -1,7 +1,7 @@
 import ReportModel, { IReportDocument } from "../models/report.model";
 import { IReport } from "../types/report.types";
 import { BaseRepository } from "./base.repository";
-import mongoose, { FilterQuery } from "mongoose";
+import mongoose, { FilterQuery, SortOrder } from "mongoose";
 import { IReportRepository } from "../interfaces/repositories/IReportRepository";
 
 export class ReportRepository
@@ -25,11 +25,32 @@ export class ReportRepository
       .exec() as unknown as IReport | null;
   }
 
+  async findByIdPopulated(id: string): Promise<IReport | null> {
+    return this.findById(id);
+  }
+
   async findByReporterId(reporterId: string): Promise<IReport[]> {
     return this.model
       .find({ reporterId } as FilterQuery<IReportDocument>)
       .populate("reportedId", "name email profilePhoto role")
       .sort({ createdAt: -1 })
+      .exec() as unknown as IReport[];
+  }
+
+  async findAllPopulated(
+    filter: FilterQuery<IReportDocument> = {},
+    sort: Record<string, SortOrder> = { createdAt: -1 },
+    limit = 10,
+    skip = 0
+  ): Promise<IReport[]> {
+    return this.model
+      .find(filter)
+      .populate("reporterId", "name email phone profilePhoto role")
+      .populate("reportedId", "name email phone profilePhoto role")
+      .populate("bookingId")
+      .sort(sort)
+      .limit(limit)
+      .skip(skip)
       .exec() as unknown as IReport[];
   }
 

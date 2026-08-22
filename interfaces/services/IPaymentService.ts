@@ -1,19 +1,8 @@
-import { IBooking } from "../../types/booking.types";
-
-export interface CheckoutResult {
-  sessionId: string;
-  url: string;
-}
-
-export interface VerifyPaymentResult {
-  booking: IBooking;
-  alreadyProcessed: boolean;
-  message: string;
-}
+import { CheckoutResultDTO, VerifyPaymentResultDTO, WebhookResultDTO } from "../../dtos/payment.dto";
 
 export interface IPaymentService {
-  createCheckoutSession(userId: string, bookingId: string): Promise<CheckoutResult>;
-  verifyAndFinalizePayment(sessionId: string, bookingId: string): Promise<VerifyPaymentResult>;
-  handleWebhookEvent(event: { type: string; data: { object: Record<string, unknown> } }): Promise<void>;
+  createCheckoutSession(userId: string, bookingId: string): Promise<CheckoutResultDTO | null>;
+  verifyAndFinalizePayment(sessionId: string, bookingId: string): Promise<VerifyPaymentResultDTO | null>;
+  handleWebhookEvent(event: { type: string; data: { object: Record<string, unknown> } }): Promise<WebhookResultDTO | null>;
   payWithWallet(userId: string, bookingId: string): Promise<void>;
 }

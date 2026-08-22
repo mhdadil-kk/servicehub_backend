@@ -1,66 +1,39 @@
 import { IProviderAvailability } from "../types/providerProfile.types";
-
-export interface TimeSlotDTO {
-  id: string;
-  start: string;
-  end: string;
-  startDate?: string;
-  endDate?: string;
-  rrule?: string;
-}
-
-export interface DayScheduleDTO {
-  isAvailable: boolean;
-  slots: TimeSlotDTO[];
-}
-
-export interface DateOverrideDTO {
-  id: string;
-  date: string;
-  isAvailable: boolean;
-  slots: TimeSlotDTO[];
-}
-
-export interface ProviderAvailabilityResponseDTO {
-  _id: string;
-  providerId: string;
-  startDate?: string;
-  endDate?: string;
-  weeklySchedule: {
-    Monday: DayScheduleDTO;
-    Tuesday: DayScheduleDTO;
-    Wednesday: DayScheduleDTO;
-    Thursday: DayScheduleDTO;
-    Friday: DayScheduleDTO;
-    Saturday: DayScheduleDTO;
-    Sunday: DayScheduleDTO;
-  };
-  overrides: DateOverrideDTO[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { ProviderAvailabilityResponseDTO } from "../dtos/provider.dto";
 
 export class ProviderAvailabilityMapper {
-  static toResponse(availability: IProviderAvailability & { toObject?: () => IProviderAvailability; _id?: { toString: () => string }; providerId?: { toString: () => string } }): ProviderAvailabilityResponseDTO | null {
+  static toResponse(
+    availability: (IProviderAvailability & { toObject?: () => IProviderAvailability }) | null
+  ): ProviderAvailabilityResponseDTO | null {
     if (!availability) return null;
 
-    const a = typeof availability.toObject === 'function' ? availability.toObject() : availability;
+    const a = typeof availability.toObject === "function" ? availability.toObject() : availability;
 
     return {
-      _id: (a as IProviderAvailability & { _id?: { toString: () => string }, id?: string })._id?.toString() || (a as IProviderAvailability & { id?: string }).id || "",
-      providerId: (a.providerId as unknown as { toString: () => string }).toString(),
+      providerId: a.providerId ? a.providerId.toString() : "",
+      isAvailable: a.isAvailable ?? true,
       startDate: a.startDate,
       endDate: a.endDate,
-      weeklySchedule: a.weeklySchedule || {
-        Monday: { isAvailable: false, slots: [] },
-        Tuesday: { isAvailable: false, slots: [] },
-        Wednesday: { isAvailable: false, slots: [] },
-        Thursday: { isAvailable: false, slots: [] },
-        Friday: { isAvailable: false, slots: [] },
-        Saturday: { isAvailable: false, slots: [] },
-        Sunday: { isAvailable: false, slots: [] },
-      },
-      overrides: a.overrides || [],
+      weeklySchedule: (a.weeklySchedule || []).map((s) => ({
+        day: s.day,
+        isAvailable: s.isAvailable,
+        slots: (s.slots || []).map((slot) => ({
+          start: slot.start,
+          end: slot.end,
+        })),
+      })),
+      dateOverrides: (a.dateOverrides || []).map((o) => ({
+        date: o.date,
+        isAvailable: o.isAvailable,
+        slots: (o.slots || []).map((slot) => ({
+          start: slot.start,
+          end: slot.end,
+        })),
+      })),
+      slots: (a.slots || []).map((slot) => ({
+        start: slot.start,
+        end: slot.end,
+      })),
       createdAt: new Date(a.createdAt || Date.now()).toISOString(),
       updatedAt: new Date(a.updatedAt || Date.now()).toISOString(),
     };

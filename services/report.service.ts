@@ -1,148 +1,97 @@
 import { IReportRepository } from "../interfaces/repositories/IReportRepository";
-import { IReportService, CreateReportInput } from "../interfaces/services/IReportService";
-import { INotificationService } from "../interfaces/services/INotificationService";
 import { IUserRepository } from "../interfaces/repositories/IUserRepository";
-import { IReport } from "../types/report.types";
-import { NotFoundError, ForbiddenError, BadRequestError } from "../utils/error";
+import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
+import { INotificationService } from "../interfaces/services/INotificationService";
+import { IReportService } from "../interfaces/services/IReportService";
+import { NotFoundError, BadRequestError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
+import { ReportResponseDTO, CreateReportInputDTO } from "../dtos/report.dto";
+import { ReportMapper } from "../mappers/report.mapper";
+import mongoose from "mongoose";
 
 export class ReportService implements IReportService {
-  private _reportRepository: IReportRepository;
-  private _notificationService: INotificationService;
-  private _userRepository: IUserRepository;
-
   constructor(
-    reportRepository: IReportRepository,
-    notificationService: INotificationService,
-    userRepository: IUserRepository
-  ) {
-    this._reportRepository = reportRepository;
-    this._notificationService = notificationService;
-    this._userRepository = userRepository;
-  }
+    private _reportRepository: IReportRepository,
+    private _userRepository: IUserRepository,
+    private _bookingRepository: IBookingRepository,
+    private _notificationService: INotificationService
+  ) {}
 
-  async createReport(reporterId: string, data: CreateReportInput): Promise<IReport> {
-    if (!data.reportedId || !data.category || !data.description) {
-      throw new BadRequestError("Reported account, category, and description are required.");
+  async createReport(reporterId: string, data: CreateReportInputDTO): Promise<ReportResponseDTO> {
+    const reportedUser = await this._userRepository.findById(data.reportedId);
+    if (!reportedUser) throw new NotFoundError("Reported user not found");
+
+    if (data.bookingId) {
+      const booking = await this._bookingRepository.findById(data.bookingId);
+      if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
     }
 
     const report = await this._reportRepository.create({
-      reporterId,
-      reportedId: data.reportedId,
-      bookingId: data.bookingId ? data.bookingId : undefined,
+      reporterId: new mongoose.Types.ObjectId(reporterId),
+      reportedId: new mongoose.Types.ObjectId(data.reportedId),
+      bookingId: data.bookingId ? new mongoose.Types.ObjectId(data.bookingId) : undefined,
       category: data.category,
       description: data.description,
       screenshot: data.screenshot,
       status: "pending",
-      actionTaken: "none",
     });
 
-    await this._notificationService.create({
-      userId: reporterId,
-      title: "Report Submitted Successfully",
-      message: `Your report for category "${data.category}" has been received and is pending review.`,
-      type: "success",
-      relatedId: report.id,
-    });
-
-    return report;
+    return ReportMapper.toResponse(report)!;
   }
 
-  async getMyReports(userId: string): Promise<IReport[]> {
-    return this._reportRepository.findByReporterId(userId);
+  async getMyReports(userId: string): Promise<ReportResponseDTO[]> {
+    const reports = await this._reportRepository.findAllPopulated({ reporterId: new mongoose.Types.ObjectId(userId) });
+    return ReportMapper.toArrayResponse(reports);
   }
 
-  async getReportById(reportId: string, userId: string, role: string): Promise<IReport> {
-    const report = await this._reportRepository.findById(reportId);
-    if (!report) throw new NotFoundError("Report not found.");
+  async getReportById(reportId: string, userId: string, role: string): Promise<ReportResponseDTO> {
+    const report = await this._reportRepository.findByIdPopulated(reportId);
+    if (!report) throw new NotFoundError(ERROR_MESSAGES.RESOURCE_NOT_FOUND);
 
-    if (role !== "admin" && report.reporterId.toString() !== userId) {
-      throw new ForbiddenError(ERROR_MESSAGES.FORBIDDEN);
+    if (role !== "admin" && report.reporterId.toString() !== userId && report.reportedId.toString() !== userId) {
+      throw new BadRequestError(ERROR_MESSAGES.UNAUTHORIZED_ACTION);
     }
 
-    return report;
+    return ReportMapper.toResponse(report)!;
   }
 
-  async getAllReports(
-    filter: { status?: string; search?: string } = {},
-    page = 1,
-    limit = 10
-  ): Promise<{ reports: IReport[]; total: number }> {
-    return this._reportRepository.findReports(filter, page, limit);
+  async getAllReports(filter: { status?: string; search?: string }, page: number = 1, limit: number = 10): Promise<{ reports: ReportResponseDTO[]; total: number }> {
+    const query: Record<string, unknown> = {};
+    if (filter.status) query.status = filter.status;
+
+    const skip = (page - 1) * limit;
+    const [reports, total] = await Promise.all([
+      this._reportRepository.findAllPopulated(query, { createdAt: -1 }, limit, skip),
+      this._reportRepository.count(query),
+    ]);
+
+    return {
+      reports: ReportMapper.toArrayResponse(reports),
+      total,
+    };
   }
 
-  async takeAction(
-    reportId: string,
-    action: "warn" | "block" | "reject" | "resolve",
-    adminNotes: string
-  ): Promise<IReport> {
+  async takeAction(reportId: string, action: "warn" | "block" | "reject" | "resolve", adminNotes: string): Promise<ReportResponseDTO> {
     const report = await this._reportRepository.findById(reportId);
-    if (!report) throw new NotFoundError("Report not found.");
-
-    let newStatus: "pending" | "under_review" | "resolved" | "rejected" = "resolved";
-    let actionTaken: "warn" | "block" | "reject" | "resolve" | "none" = "none";
-    
-    const reporterUserId = (report.reporterId as unknown as { _id?: { toString: () => string } })?._id 
-      ? (report.reporterId as unknown as { _id: { toString: () => string } })._id.toString() 
-      : report.reporterId.toString();
-      
-    const reportedUserId = (report.reportedId as unknown as { _id?: { toString: () => string } })?._id 
-      ? (report.reportedId as unknown as { _id: { toString: () => string } })._id.toString() 
-      : report.reportedId.toString();
-
-    if (action === "reject") {
-      newStatus = "rejected";
-      actionTaken = "reject";
-    } else if (action === "warn") {
-      newStatus = "resolved";
-      actionTaken = "warn";
-
-      await this._notificationService.create({
-        userId: reportedUserId,
-        title: "Account Warning Issued",
-        message: `An admin has issued a warning to your account due to behavior reported under category: "${report.category}".`,
-        type: "warning",
-      });
-    } else if (action === "block") {
-      newStatus = "resolved";
-      actionTaken = "block";
-
-      await this._userRepository.updateById(reportedUserId, { isDeleted: true });
-
-      await this._notificationService.create({
-        userId: reportedUserId,
-        title: "Account Blocked",
-        message: `Your account has been blocked by an admin following reports for "${report.category}".`,
-        type: "warning",
-      });
-    } else if (action === "resolve") {
-      newStatus = "resolved";
-      actionTaken = "resolve";
-    }
+    if (!report) throw new NotFoundError(ERROR_MESSAGES.RESOURCE_NOT_FOUND);
 
     const updated = await this._reportRepository.update(reportId, {
-      status: newStatus,
-      actionTaken,
+      status: action === "reject" ? "rejected" : "resolved",
+      actionTaken: action,
       adminNotes,
     });
 
-    if (!updated) throw new NotFoundError("Failed to update report.");
+    if (!updated) throw new NotFoundError(ERROR_MESSAGES.RESOURCE_NOT_FOUND);
 
-    let reporterMsg = `The report you filed has been reviewed by our admin team and marked as ${newStatus}.`;
-    if (action === "reject") {
-      reporterMsg = `The report you filed has been rejected by our admin team.`;
-    } else if (action === "warn" || action === "block") {
-      reporterMsg = `The report you filed has been resolved. Action has been taken against the reported account.`;
+    if (action === "warn" || action === "block") {
+      await this._notificationService.create({
+        userId: report.reportedId.toString(),
+        title: action === "warn" ? "Warning" : "Account Blocked",
+        message: `An action has been taken against your account regarding a recent report.`,
+        type: "warning",
+      });
     }
 
-    await this._notificationService.create({
-      userId: reporterUserId,
-      title: "Report Status Update",
-      message: reporterMsg,
-      type: "info",
-      relatedId: reportId,
-    });
-
-    return updated;
+    return ReportMapper.toResponse(updated)!;
   }
 }

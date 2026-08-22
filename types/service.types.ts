@@ -1,4 +1,7 @@
+import mongoose from "mongoose";
+
 export interface IService {
+  _id?: mongoose.Types.ObjectId;
   id: string;
   name: string;
   slug: string;

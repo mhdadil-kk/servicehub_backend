@@ -1,6 +1,5 @@
 import { Server, Socket } from "socket.io";
 import { IChatService } from "../interfaces/services/IChatService";
-import { MessageMapper } from "../mappers/message.mapper";
 
 export class ChatSocketController {
   constructor(
@@ -96,19 +95,18 @@ export class ChatSocketController {
         );
       }
 
-      const convId = rawMessage.conversationId.toString();
+      const convId = rawMessage.conversationId;
       const roomName = `conversation_${convId}`;
 
       const socketsInRoom = await this._io.in(roomName).fetchSockets();
       const recipientOnline = socketsInRoom.some((s) => s.data.user?.id !== user.id);
 
       if (recipientOnline) {
-        await this._chatService.markMessageDelivered(rawMessage.id);
-        rawMessage.delivered = true;
+        await this._chatService.markMessageDelivered(rawMessage._id);
+        rawMessage.status = "delivered";
       }
 
-      const mapped = MessageMapper.toResponse(rawMessage);
-      this._io.to(roomName).emit("message_received", mapped);
+      this._io.to(roomName).emit("message_received", rawMessage);
     } catch {
       socket.emit("error", { message: "Failed to send message" });
     }
@@ -120,9 +118,8 @@ export class ChatSocketController {
 
     try {
       const message = await this._chatService.deleteMessage(messageId, userId);
-      const mapped = MessageMapper.toResponse(message);
       const roomName = `conversation_${message.conversationId}`;
-      this._io.to(roomName).emit("message_deleted", mapped);
+      this._io.to(roomName).emit("message_deleted", message);
     } catch {
       socket.emit("error", { message: "Failed to delete message" });
     }

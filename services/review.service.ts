@@ -1,36 +1,24 @@
-import mongoose from "mongoose";
 import { IReviewRepository } from "../interfaces/repositories/IReviewRepository";
 import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
 import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
-import { IReview } from "../types/review.types";
-import { BadRequestError, NotFoundError, ForbiddenError } from "../utils/error";
-import { REVIEWABLE_BOOKING_STATUSES } from "../constants/statuses";
-import { logger } from "../utils/logger";
+import { IReviewService } from "../interfaces/services/IReviewService";
+import { NotFoundError, BadRequestError, ForbiddenError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
-import { IReviewService, CreateReviewInput, CreateReviewResult, ProviderReviewsResult } from "../interfaces/services/IReviewService";
+import { CreateReviewInputDTO, CreateReviewResultDTO, ProviderReviewsResultDTO, ReviewResponseDTO } from "../dtos/review.dto";
+import { ReviewMapper } from "../mappers/review.mapper";
+import mongoose from "mongoose";
 
 export class ReviewService implements IReviewService {
-    private _reviewRepository: IReviewRepository;
-  private _bookingRepository: IBookingRepository;
-  private _providerProfileRepository: IProviderProfileRepository;
   constructor(
-    reviewRepository: IReviewRepository,
-    bookingRepository: IBookingRepository,
-    providerProfileRepository: IProviderProfileRepository
-  ) {
-    this._reviewRepository = reviewRepository;
-    this._bookingRepository = bookingRepository;
-    this._providerProfileRepository = providerProfileRepository;
-}
+    private _reviewRepository: IReviewRepository,
+    private _bookingRepository: IBookingRepository,
+    private _providerProfileRepository: IProviderProfileRepository
+  ) {}
 
-  async createReview(userId: string, input: CreateReviewInput): Promise<CreateReviewResult> {
+  async createReview(userId: string, input: CreateReviewInputDTO): Promise<CreateReviewResultDTO> {
     const { bookingId, rating, reviewText } = input;
 
-    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
-      throw new BadRequestError(ERROR_MESSAGES.INVALID_BOOKING_ID);
-    }
-
-    const booking = await this._bookingRepository.findById(bookingId);
+    const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) {
       throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
     }
@@ -39,62 +27,37 @@ export class ReviewService implements IReviewService {
       throw new ForbiddenError(ERROR_MESSAGES.NOT_AUTHORIZED_REVIEW);
     }
 
-    if (
-      !REVIEWABLE_BOOKING_STATUSES.includes(
-        booking.status as (typeof REVIEWABLE_BOOKING_STATUSES)[number]
-      )
-    ) {
-      throw new BadRequestError(
-        `${ERROR_MESSAGES.BOOKING_NOT_REVIEWABLE} Current status: ${booking.status}`
-      );
+    if (booking.status !== "completed" && booking.status !== "completed_pending_payment") {
+      throw new BadRequestError(ERROR_MESSAGES.ONLY_COMPLETED_CAN_BE_REVIEWED);
     }
 
-    const existing = await this._reviewRepository.findByBookingAndUser(bookingId, userId);
-    if (existing) {
-      return { review: existing, isNew: false };
+    const providerId = booking.providerId.toString();
+    const existingReview = await this._reviewRepository.findByBookingId(bookingId);
+    
+    if (existingReview) {
+      return { review: ReviewMapper.toResponse(existingReview)!, isNew: false };
     }
 
-    try {
-      const review = await this._reviewRepository.create({
-        bookingId,
-        providerId: booking.providerId.toString(),
-        userId,
-        rating,
-        reviewText,
-      });
+    const newReview = await this._reviewRepository.create({
+      bookingId,
+      providerId,
+      userId,
+      rating,
+      reviewText,
+    });
 
-      await this.updateProviderRating(booking.providerId.toString(), rating);
+    const stats = await this._reviewRepository.getProviderStats(providerId);
+    await this._providerProfileRepository.updateRatingAndReviews(
+      providerId,
+      stats.averageRating,
+      stats.totalReviews
+    );
 
-      return { review, isNew: true };
-    } catch (error: unknown) {
-      if (
-        error &&
-        typeof error === "object" &&
-        "code" in error &&
-        (error as { code: number }).code === 11000
-      ) {
-        const duplicate = await this._reviewRepository.findByBookingAndUser(bookingId, userId);
-        if (duplicate) {
-          return { review: duplicate, isNew: false };
-        }
-      }
-      throw error;
-    }
+    const populatedReview = await this._reviewRepository.findById(newReview._id ? newReview._id.toString() : newReview.id);
+    return { review: ReviewMapper.toResponse(populatedReview)!, isNew: true };
   }
 
-  private async updateProviderRating(providerProfileId: string, newRating: number): Promise<void> {
-    try {
-      await this._providerProfileRepository.incrementRating(providerProfileId, newRating);
-    } catch (err) {
-      logger.warn(`Could not update provider rating: ${err}`);
-    }
-  }
-
-  async getProviderReviews(
-    providerId: string,
-    page: number,
-    limit: number
-  ): Promise<ProviderReviewsResult> {
+  async getProviderReviews(providerId: string, page: number = 1, limit: number = 10): Promise<ProviderReviewsResultDTO> {
     if (!mongoose.Types.ObjectId.isValid(providerId)) {
       throw new BadRequestError(ERROR_MESSAGES.INVALID_PROVIDER_ID);
     }
@@ -106,7 +69,7 @@ export class ReviewService implements IReviewService {
     ]);
 
     return {
-      reviews,
+      reviews: reviews.map((r) => ReviewMapper.toResponse(r)!),
       pagination: {
         page,
         limit,
@@ -116,7 +79,7 @@ export class ReviewService implements IReviewService {
     };
   }
 
-  async likeReview(reviewId: string, providerUserId: string): Promise<IReview> {
+  async likeReview(reviewId: string, providerUserId: string): Promise<ReviewResponseDTO> {
     if (!mongoose.Types.ObjectId.isValid(reviewId)) {
       throw new BadRequestError(ERROR_MESSAGES.INVALID_REVIEW_ID);
     }
@@ -140,6 +103,6 @@ export class ReviewService implements IReviewService {
       throw new NotFoundError(ERROR_MESSAGES.REVIEW_NOT_FOUND);
     }
 
-    return updated;
+    return ReviewMapper.toResponse(updated)!;
   }
 }

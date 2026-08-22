@@ -34,3 +34,42 @@ export const ReportQuerySchema = z.object({
     limit: z.string().optional(),
   }),
 });
+
+export interface CreateReportInputDTO {
+  reportedId: string;
+  bookingId?: string;
+  category: "Fraud" | "Fake Profile" | "Harassment" | "Spam" | "Payment Issue" | "Inappropriate Behaviour" | "Service Quality" | "Other";
+  description: string;
+  screenshot?: string;
+}
+
+export interface ReportUserSnippetDTO {
+  _id: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  profilePhoto?: string;
+  role?: string;
+}
+
+export interface ReportBookingSnippetDTO {
+  _id: string;
+  date?: string;
+  slot?: Record<string, unknown>;
+  status?: string;
+}
+
+export interface ReportResponseDTO {
+  _id: string;
+  reporterId: ReportUserSnippetDTO | string;
+  reportedId: ReportUserSnippetDTO | string;
+  bookingId?: ReportBookingSnippetDTO | string;
+  category: string;
+  description: string;
+  screenshot?: string;
+  status: string;
+  actionTaken?: string;
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}

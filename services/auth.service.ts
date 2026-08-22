@@ -9,10 +9,11 @@ import bcrypt from "bcrypt";
 import { OTPGenerator } from "../utils/otp";
 import { logger } from "../utils/logger";
 import { IAuthService } from "../interfaces/services/IAuthService";
+import { UserResponseDTO, AuthResponseDTO } from "../dtos/auth.dto";
+import { UserMapper } from "../mappers/user.mapper";
 import mongoose from "mongoose";
 
 export class AuthService implements IAuthService {
-
   private _userRepository: IUserRepository;
   private _otpRepository: IOTPRepository;
   private _mailer: IMailer;
@@ -27,7 +28,7 @@ export class AuthService implements IAuthService {
     this._mailer = mailer;
   }
 
-  async signup(data: Partial<IUser>): Promise<IUser> {
+  async signup(data: Partial<IUser>): Promise<UserResponseDTO> {
     if (!data.email || !data.password) throw new BadRequestError(ERROR_MESSAGES.VALIDATION_ERROR);
     const existingUser = await this._userRepository.findByEmail(data.email);
     if (existingUser) throw new BadRequestError(ERROR_MESSAGES.EMAIL_ALREADY_EXISTS);
@@ -43,23 +44,22 @@ export class AuthService implements IAuthService {
     });
     
     await this.requestOTP(data.email, "verification");
-    return newUser;
+    return UserMapper.toResponse(newUser) as UserResponseDTO;
   }
-  
 
-  async login(email: string, password: string) {
-    const user = await this._userRepository.findByEmail(email);
+  async login(email: string, password: string): Promise<AuthResponseDTO> {
+    const user = await this._userRepository.findByEmailWithPassword(email);
     
     if (!user || user.isDeleted) throw new UnauthorizedError("Your account has been blocked or does not exist.");
     if (!user.password) throw new UnauthorizedError(ERROR_MESSAGES.INVALID_CREDENTIALS);
-    
     
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) throw new UnauthorizedError(ERROR_MESSAGES.INVALID_CREDENTIALS);
     if (!user.is_verified) throw new UnauthorizedError("Email not verified. Please verify your OTP.");
     
     const { accessToken, refreshToken } = generateTokens(user.id, user.role);
-    return { user, accessToken, refreshToken };
+    const userDTO = UserMapper.toResponse(user) as UserResponseDTO;
+    return { user: userDTO, accessToken, refreshToken };
   }
 
   async requestOTP(email: string, type: "verification" | "reset_password"): Promise<void> {
@@ -80,7 +80,7 @@ export class AuthService implements IAuthService {
     }
   }
 
-  async verifyEmail(email: string, otp: string) {
+  async verifyEmail(email: string, otp: string): Promise<AuthResponseDTO> {
     const user = await this._userRepository.findByEmail(email);
     if (!user) throw new NotFoundError(ERROR_MESSAGES.USER_NOT_FOUND);
     const otpRecord = await this._otpRepository.findLatest(user.id, "verification");
@@ -91,9 +91,9 @@ export class AuthService implements IAuthService {
     await this._otpRepository.delete(otpRecord.id);
 
     const { accessToken, refreshToken } = generateTokens(user.id, user.role);
-    return { user, accessToken, refreshToken };
+    const userDTO = UserMapper.toResponse(user) as UserResponseDTO;
+    return { user: userDTO, accessToken, refreshToken };
   }
-
 
   async resetPassword(email: string, token: string, newPassword: string): Promise<void> {
     const user = await this._userRepository.findByEmail(email);
@@ -108,7 +108,7 @@ export class AuthService implements IAuthService {
     await this._otpRepository.delete(otpRecord.id);
   }
 
-  async googleLogin(token: string, role?: string) {
+  async googleLogin(token: string, role?: string): Promise<AuthResponseDTO> {
     try {
       const response = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
       const payload = (await response.json()) as { email?: string; name?: string };
@@ -137,14 +137,15 @@ export class AuthService implements IAuthService {
       if (user.isDeleted) throw new UnauthorizedError("Your account has been blocked.");
 
       const { accessToken, refreshToken } = generateTokens(user.id, user.role);
-      return { user, accessToken, refreshToken };
+      const userDTO = UserMapper.toResponse(user) as UserResponseDTO;
+      return { user: userDTO, accessToken, refreshToken };
     } catch (error: unknown) {
       logger.error("Google Login Error:", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
-  async refreshToken(token: string) {
+  async refreshToken(token: string): Promise<{ accessToken: string }> {
     const decoded = verifyRefreshToken(token);
     const user = await this._userRepository.findById(decoded.id);
     if (!user || user.isDeleted) throw new UnauthorizedError("User not found or blocked");
@@ -165,13 +166,13 @@ export class AuthService implements IAuthService {
     await this._userRepository.update(userId, { password: hashedPassword });
   }
 
-  async updateProfile(userId: string, data: { name?: string; phone?: string }): Promise<{ user: IUser }> {
+  async updateProfile(userId: string, data: { name?: string; phone?: string }): Promise<{ user: UserResponseDTO }> {
     const user = await this._userRepository.findById(userId);
     if (!user || user.isDeleted) throw new UnauthorizedError("User not found or blocked");
     
     await this._userRepository.update(userId, data);
     const updatedUser = await this._userRepository.findById(userId);
-    return { user: updatedUser! };
+    const userDTO = UserMapper.toResponse(updatedUser) as UserResponseDTO;
+    return { user: userDTO };
   }
 }
-

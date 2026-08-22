@@ -2,14 +2,16 @@ import { IConversationRepository } from "../interfaces/repositories/IConversatio
 import { IMessageRepository } from "../interfaces/repositories/IMessageRepository";
 import { IProviderProfileRepository } from "../interfaces/repositories/IProviderProfileRepository";
 import { IBookingRepository } from "../interfaces/repositories/IBookingRepository";
-import { IMessage, IConversation } from "../types/chat.types";
+import { IMessage, IConversation, IPopulatedParticipant } from "../types/chat.types";
 import { NotFoundError, ForbiddenError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
 import { IChatService, ConversationListItem } from "../interfaces/services/IChatService";
 import { IBooking } from "../types/booking.types";
+import { MessageMapper } from "../mappers/message.mapper";
+import { MessageResponseDTO } from "../dtos/chat.dto";
 
 export class ChatService implements IChatService {
-    private _conversationRepository: IConversationRepository;
+  private _conversationRepository: IConversationRepository;
   private _messageRepository: IMessageRepository;
   private _providerProfileRepository: IProviderProfileRepository;
   private _bookingRepository: IBookingRepository;
@@ -23,7 +25,7 @@ export class ChatService implements IChatService {
     this._messageRepository = messageRepository;
     this._providerProfileRepository = providerProfileRepository;
     this._bookingRepository = bookingRepository;
-}
+  }
 
   async getConversations(userId: string): Promise<ConversationListItem[]> {
     const conversations = await this._conversationRepository.findByUserIdPopulated(userId);
@@ -33,20 +35,45 @@ export class ChatService implements IChatService {
         const convId = c.id;
         const lastMessage = await this._messageRepository.findLastByConversationId(convId);
         const unreadCount = await this._messageRepository.countUnread(convId, userId);
-        const providerInfo = await this.resolveProviderInfo(c.participants as unknown as { role: string }[]);
+        const providerInfo = await this.resolveProviderInfo(c.participants);
 
-        const obj = (c as IConversation & { toObject?: () => IConversation }).toObject ? (c as IConversation & { toObject?: () => IConversation }).toObject!() : { ...c };
-        const pIndex = obj.participants.findIndex((p: { role: string }) => p.role === "provider");
+        const obj = (c as IConversation & { toObject?: () => IConversation }).toObject
+          ? (c as IConversation & { toObject?: () => IConversation }).toObject!()
+          : { ...c };
+
+        const pIndex = obj.participants.findIndex(
+          (p): boolean =>
+            typeof p === "object" && p !== null && "role" in p &&
+            (p as IPopulatedParticipant).role === "provider"
+        );
         if (pIndex >= 0 && providerInfo.profilePhoto) {
-          (obj.participants[pIndex] as unknown as { profilePhoto: string }).profilePhoto = providerInfo.profilePhoto;
+          const participant = obj.participants[pIndex];
+          if (typeof participant === "object" && participant !== null && "_id" in participant) {
+            (participant as IPopulatedParticipant).profilePhoto = providerInfo.profilePhoto;
+          }
         }
 
+        const populatedParticipants = obj.participants.filter(
+          (p): p is IPopulatedParticipant =>
+            typeof p === "object" && p !== null && "_id" in p && "role" in p
+        );
+
+        const bookingId = obj.bookingId
+          ? (typeof obj.bookingId === "object" && "_id" in obj.bookingId
+              ? obj.bookingId._id.toString()
+              : obj.bookingId.toString())
+          : null;
+
         return {
-          ...obj,
+          _id: obj._id?.toString() || obj.id || "",
+          participants: populatedParticipants,
+          bookingId,
           lastMessage,
           unreadCount,
           providerServiceName: providerInfo.serviceName,
-        } as unknown as ConversationListItem;
+          updatedAt: obj.updatedAt,
+          createdAt: obj.createdAt,
+        };
       })
     );
 
@@ -55,7 +82,7 @@ export class ChatService implements IChatService {
         ? new Date(a.lastMessage.createdAt).getTime()
         : new Date(a.updatedAt).getTime();
       const timeB = b.lastMessage
-        ? new Date(b.lastMessage.createdAt).getTime() 
+        ? new Date(b.lastMessage.createdAt).getTime()
         : new Date(b.updatedAt).getTime();
       return timeB - timeA;
     });
@@ -73,7 +100,7 @@ export class ChatService implements IChatService {
     return this.enrichConversation(populated, userId);
   }
 
-  async getChatHistory(conversationIdOrBookingId: string, userId: string): Promise<IMessage[]> {
+  async getChatHistory(conversationIdOrBookingId: string, userId: string): Promise<MessageResponseDTO[]> {
     const conversation = await this._conversationRepository.findByIdOrBookingIdPopulated(
       conversationIdOrBookingId
     );
@@ -81,7 +108,8 @@ export class ChatService implements IChatService {
     if (!this._conversationRepository.isParticipant(conversation, userId)) {
       throw new ForbiddenError(ERROR_MESSAGES.CHAT_ACCESS_DENIED);
     }
-    return this._messageRepository.findByConversationId(conversation.id);
+    const messages = await this._messageRepository.findByConversationId(conversation.id);
+    return messages.map((m) => MessageMapper.toResponse(m)!);
   }
 
   async saveMessage(
@@ -89,7 +117,7 @@ export class ChatService implements IChatService {
     senderId: string,
     senderRole: "user" | "provider",
     content: string
-  ): Promise<IMessage> {
+  ): Promise<MessageResponseDTO> {
     let conversation = await this._conversationRepository.findByIdOrBookingIdPopulated(
       conversationIdOrBookingId
     );
@@ -100,7 +128,7 @@ export class ChatService implements IChatService {
         const provProfile = await this._providerProfileRepository.findById(booking.providerId.toString());
         if (provProfile) {
           const bookingDoc = booking as IBooking & { _id?: { toString: () => string } };
-          const bId = bookingDoc.id || bookingDoc._id?.toString() || bookingId;
+          const bId = bookingDoc._id?.toString() || conversationIdOrBookingId;
           conversation = await this._conversationRepository.createForBooking(
             [booking.userId.toString(), provProfile.userId.toString()],
             bId
@@ -126,7 +154,7 @@ export class ChatService implements IChatService {
     });
 
     await this._conversationRepository.touchUpdatedAt(conversation.id);
-    return savedMsg;
+    return MessageMapper.toResponse(savedMsg)!;
   }
 
   async saveImageMessage(
@@ -135,7 +163,7 @@ export class ChatService implements IChatService {
     senderRole: "user" | "provider",
     imageUrl: string,
     imagePublicId: string
-  ): Promise<IMessage> {
+  ): Promise<MessageResponseDTO> {
     const conversation = await this._conversationRepository.findByIdOrBookingIdPopulated(conversationId);
     if (!conversation) throw new NotFoundError(ERROR_MESSAGES.CHAT_CONVERSATION_NOT_FOUND);
     if (!this._conversationRepository.isParticipant(conversation, senderId)) {
@@ -152,7 +180,7 @@ export class ChatService implements IChatService {
     });
 
     await this._conversationRepository.touchUpdatedAt(conversation.id);
-    return savedMsg;
+    return MessageMapper.toResponse(savedMsg)!;
   }
 
   async markAsRead(conversationIdOrBookingId: string, userId: string): Promise<void> {
@@ -189,41 +217,57 @@ export class ChatService implements IChatService {
     await this._conversationRepository.deleteById(conversationId);
   }
 
-  async deleteMessage(messageId: string, userId: string): Promise<IMessage> {
+  async deleteMessage(messageId: string, userId: string): Promise<MessageResponseDTO> {
     const updated = await this._messageRepository.softDeleteMessage(messageId, userId);
     if (!updated) {
       const message = await this._messageRepository.findById(messageId);
       if (!message) throw new NotFoundError(ERROR_MESSAGES.CHAT_MESSAGE_NOT_FOUND);
       throw new ForbiddenError(ERROR_MESSAGES.CHAT_CANNOT_DELETE_MESSAGE);
     }
-    return updated;
+    return MessageMapper.toResponse(updated)!;
   }
 
   private async resolveProviderInfo(
-    participants: { role: string; _id?: unknown; id?: unknown }[]
+    participants: IConversation["participants"]
   ): Promise<{ serviceName: string; profilePhoto?: string }> {
     try {
-      const providerParticipant = participants.find((p) => p.role === "provider");
+      const providerParticipant = participants.find(
+        (p): p is IPopulatedParticipant =>
+          typeof p === "object" && p !== null && "role" in p &&
+          (p as IPopulatedParticipant).role === "provider"
+      );
       if (!providerParticipant) return { serviceName: "Service Provider" };
 
-      const providerIdStr = providerParticipant._id ? String(providerParticipant._id) : String(providerParticipant.id);
+      const providerIdStr = providerParticipant._id.toString();
       const profile = await this._providerProfileRepository.findByUserIdWithDetails(providerIdStr);
 
-      return {
-        serviceName: (profile as unknown as { serviceId?: { name: string } })?.serviceId?.name || "Service Provider",
-        profilePhoto: profile?.profilePhoto,
-      };
+      const serviceId = profile?.serviceId;
+      const serviceName =
+        serviceId && typeof serviceId === "object" && "name" in serviceId && typeof serviceId.name === "string"
+          ? serviceId.name
+          : "Service Provider";
+
+      return { serviceName, profilePhoto: profile?.profilePhoto };
     } catch {
       return { serviceName: "Service Provider" };
     }
   }
 
   private async enrichConversation(conversation: IConversation, _userId: string): Promise<IConversation & { providerServiceName?: string }> {
-    const obj = (conversation as IConversation & { toObject?: () => IConversation }).toObject ? (conversation as IConversation & { toObject?: () => IConversation }).toObject!() : { ...conversation };
-    const providerInfo = await this.resolveProviderInfo(obj.participants as unknown as { role: string; _id?: unknown; id?: unknown }[]);
-    const pIndex = obj.participants.findIndex((p: { role: string }) => p.role === "provider");
+    const obj = (conversation as IConversation & { toObject?: () => IConversation }).toObject
+      ? (conversation as IConversation & { toObject?: () => IConversation }).toObject!()
+      : { ...conversation };
+    const providerInfo = await this.resolveProviderInfo(obj.participants);
+    const pIndex = obj.participants.findIndex(
+      (p): boolean =>
+        typeof p === "object" && p !== null && "role" in p &&
+        (p as IPopulatedParticipant).role === "provider"
+    );
     if (pIndex >= 0 && providerInfo.profilePhoto) {
-      (obj.participants[pIndex] as unknown as { profilePhoto: string }).profilePhoto = providerInfo.profilePhoto;
+      const participant = obj.participants[pIndex];
+      if (typeof participant === "object" && participant !== null && "_id" in participant) {
+        (participant as IPopulatedParticipant).profilePhoto = providerInfo.profilePhoto;
+      }
     }
     (obj as IConversation & { providerServiceName?: string }).providerServiceName = providerInfo.serviceName;
     return obj as IConversation & { providerServiceName?: string };

@@ -3,9 +3,7 @@ import { IDashboardService } from "../interfaces/services/IDashboardService";
 import { HttpStatusCode } from "../types/http";
 import { createSuccessResponse } from "../types/response";
 import { SUCCESS_MESSAGES } from "../constants/messages";
-import { StatsMapper } from "../mappers/stats.mapper";
 import { asyncHandler } from "../utils/async-handler";
-
 
 export class DashboardController {
   constructor(private _dashboardService: IDashboardService) {}
@@ -15,7 +13,7 @@ export class DashboardController {
     const stats = await this._dashboardService.getUserDashboard(userId);
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(StatsMapper.toDashboardResponse(stats), SUCCESS_MESSAGES.USER_DASHBOARD_FETCHED)
+      createSuccessResponse(stats, SUCCESS_MESSAGES.USER_DASHBOARD_FETCHED)
     );
   });
 
@@ -24,7 +22,7 @@ export class DashboardController {
     const stats = await this._dashboardService.getProviderDashboard(userId);
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(StatsMapper.toDashboardResponse(stats), SUCCESS_MESSAGES.PROVIDER_DASHBOARD_FETCHED)
+      createSuccessResponse(stats, SUCCESS_MESSAGES.PROVIDER_DASHBOARD_FETCHED)
     );
   });
 }

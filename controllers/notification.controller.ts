@@ -3,7 +3,6 @@ import { INotificationService } from "../interfaces/services/INotificationServic
 import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
 import { SUCCESS_MESSAGES } from "../constants/messages";
-import { NotificationMapper } from "../mappers/notification.mapper";
 import { asyncHandler } from "../utils/async-handler";
 
 export class NotificationController {
@@ -14,7 +13,7 @@ export class NotificationController {
     const { notifications, unreadCount } = await this._notificationService.getByUserId(userId);
 
     res.status(HttpStatusCode.OK).json(createSuccessResponse({
-      notifications: NotificationMapper.toArrayResponse(notifications || []),
+      notifications: notifications || [],
       unreadCount: unreadCount || 0
     }));
   });
@@ -25,7 +24,7 @@ export class NotificationController {
 
     const notification = await this._notificationService.markAsRead(id as string, userId);
 
-    res.status(HttpStatusCode.OK).json(createSuccessResponse(NotificationMapper.toResponse(notification)));
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(notification));
   });
 
   markAllAsRead = asyncHandler(async (req: Request, res: Response) => {

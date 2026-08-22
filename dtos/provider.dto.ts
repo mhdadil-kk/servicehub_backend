@@ -49,3 +49,94 @@ export const UpdateAvailabilitySchema = z.object({
     endTime: z.string().optional(),
   }),
 });
+
+export interface ProviderDocumentDTO {
+  docType: string;
+  url: string;
+}
+
+export interface ProviderProfileResponseDTO {
+  _id: string;
+  userId: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    profilePhoto?: string;
+  } | string;
+  serviceId?: {
+    _id?: string;
+    name?: string;
+    description?: string;
+  } | string;
+  bio?: string;
+  profilePhoto?: string;
+  hourlyRate?: number;
+  serviceRadius?: number;
+  address?: string;
+  location?: {
+    type: string;
+    coordinates: number[];
+  };
+  documents?: ProviderDocumentDTO[];
+  onboardingStep: number;
+  onboardingStatus: string;
+  rejectionReason?: string;
+  bankDetails?: Record<string, unknown>;
+  averageRating?: number;
+  totalReviews?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicProviderProfileDTO {
+  _id: string;
+  userId: {
+    _id?: string;
+    name?: string;
+    profilePhoto?: string;
+  } | string;
+  serviceId?: {
+    _id?: string;
+    name?: string;
+  } | string;
+  bio?: string;
+  profilePhoto?: string;
+  hourlyRate?: number;
+  serviceRadius?: number;
+  averageRating?: number;
+  totalReviews?: number;
+  location?: {
+    type: string;
+    coordinates: number[];
+  };
+}
+
+export interface TimeSlotDTO {
+  start: string;
+  end: string;
+}
+
+export interface DayScheduleDTO {
+  day: string;
+  isAvailable: boolean;
+  slots: TimeSlotDTO[];
+}
+
+export interface DateOverrideDTO {
+  date: string;
+  isAvailable: boolean;
+  slots: TimeSlotDTO[];
+}
+
+export interface ProviderAvailabilityResponseDTO {
+  providerId: string;
+  isAvailable: boolean;
+  startDate?: string;
+  endDate?: string;
+  weeklySchedule: DayScheduleDTO[];
+  dateOverrides: DateOverrideDTO[];
+  slots: TimeSlotDTO[];
+  createdAt: string;
+  updatedAt: string;
+}

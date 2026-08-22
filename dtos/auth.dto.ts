@@ -1,5 +1,5 @@
 import { z } from "zod";
-
+import { UserRole, UserStatus } from "../types/user.types";
 
 export const SignupSchema = z.object({
   body: z.object({
@@ -23,14 +23,12 @@ export const OTPRequestSchema = z.object({
   })
 });
 
-
 export const OTPVerifySchema = z.object({
   body: z.object({
     email: z.string().email("Invalid email format"),
     otp: z.string().length(6, "OTP must be exactly 6 digits")
   })
 });
-
 
 export const ResetPasswordSchema = z.object({
   body: z.object({
@@ -67,6 +65,21 @@ export const RefreshTokenSchema = z.object({
   })
 });
 
+export interface UserResponseDTO {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+  profilePhoto?: string;
+  is_verified: boolean;
+  status: UserStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-
-
+export interface AuthResponseDTO {
+  user: UserResponseDTO;
+  accessToken: string;
+  refreshToken: string;
+}

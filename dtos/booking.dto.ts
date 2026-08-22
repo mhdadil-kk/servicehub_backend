@@ -81,3 +81,62 @@ export const GenerateCompletionOtpSchema = z.object({
     }).optional(),
   }).optional(),
 });
+
+export interface AvailableSlotDTO {
+  start: string;
+  end: string;
+  isBooked: boolean;
+}
+
+export interface BookingResponseDTO {
+  _id: string;
+  userId: string;
+  providerId: string;
+  serviceId: string;
+  addressId?: string;
+  date: string;
+  slot: {
+    start: string;
+    end: string;
+  };
+  status: string;
+  paymentStatus: string;
+  totalAmount: number;
+  notes?: string;
+  cancelledBy?: string;
+  cancellationReason?: string;
+  finalInvoice?: {
+    baseCharge?: number;
+    extraCharges?: { description: string; amount: number }[];
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DetailedBookingResponseDTO extends BookingResponseDTO {
+  provider?: {
+    _id: string;
+    userId: {
+      name: string;
+    };
+    profilePhoto?: string;
+    hourlyRate?: number;
+  };
+  user?: {
+    _id: string;
+    name: string;
+    profilePhoto?: string;
+  };
+  service?: {
+    _id: string;
+    name: string;
+    description?: string;
+  };
+  address?: {
+    _id: string;
+    label: string;
+    fullAddress: string;
+    latitude?: number;
+    longitude?: number;
+  };
+}

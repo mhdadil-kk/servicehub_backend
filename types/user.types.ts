@@ -20,17 +20,3 @@ export interface IUser extends Document {
   createdAt:     Date;
   updatedAt:     Date;
 }
-
-
-export interface UserResponseDTO {
-  id:            string;
-  name:          string;
-  email:         string;
-  phone?:        string;
-  role:          UserRole;
-  profilePhoto?: string;
-  is_verified:   boolean;
-  status:        UserStatus;
-  createdAt:     Date;
-  updatedAt:     Date;
-}

@@ -1,25 +1,13 @@
-import { IAddress } from "../../types/address.types";
+import { AddressResponseDTO, CreateAddressSchema, UpdateAddressSchema } from "../../dtos/address.dto";
+import { z } from "zod";
 
-export interface CreateAddressInput {
-  label: string;
-  fullAddress: string;
-  latitude?: number;
-  longitude?: number;
-  isDefault?: boolean;
-}
-
-export interface UpdateAddressInput {
-  label?: string;
-  fullAddress?: string;
-  latitude?: number;
-  longitude?: number;
-  isDefault?: boolean;
-}
+export type CreateAddressInput = z.infer<typeof CreateAddressSchema>["body"];
+export type UpdateAddressInput = z.infer<typeof UpdateAddressSchema>["body"];
 
 export interface IAddressService {
-  getAddresses(userId: string): Promise<IAddress[]>;
-  createAddress(userId: string, data: CreateAddressInput): Promise<IAddress>;
-  updateAddress(userId: string, addressId: string, data: UpdateAddressInput): Promise<IAddress>;
+  getAddresses(userId: string): Promise<AddressResponseDTO[]>;
+  createAddress(userId: string, data: CreateAddressInput): Promise<AddressResponseDTO>;
+  updateAddress(userId: string, addressId: string, data: UpdateAddressInput): Promise<AddressResponseDTO>;
   deleteAddress(userId: string, addressId: string): Promise<void>;
-  setDefaultAddress(userId: string, addressId: string): Promise<IAddress>;
+  setDefaultAddress(userId: string, addressId: string): Promise<AddressResponseDTO>;
 }

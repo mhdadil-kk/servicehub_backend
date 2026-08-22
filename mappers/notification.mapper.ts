@@ -1,16 +1,5 @@
 import { INotification } from "../types/notification.types";
-
-export interface NotificationResponseDTO {
-  _id: string;
-  userId: string;
-  title: string;
-  message: string;
-  type: string;
-  isRead: boolean;
-  relatedId?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { NotificationResponseDTO } from "../dtos/notification.dto";
 
 export class NotificationMapper {
   static toResponse(notification: INotification & { toObject?: () => INotification }): NotificationResponseDTO | null {
@@ -19,13 +8,13 @@ export class NotificationMapper {
     const n = typeof notification.toObject === 'function' ? notification.toObject() : notification;
 
     return {
-      _id: (n as INotification & { _id?: { toString: () => string }; id?: string })._id?.toString() || (n as INotification & { id?: string }).id || "",
-      userId: n.userId.toString(),
+      _id: n._id?.toString() || n.id || "",
+      userId: n.userId ? n.userId.toString() : "",
       title: n.title,
       message: n.message,
-      type: n.type,
+      type: n.type || "system",
       isRead: n.isRead,
-      relatedId: n.relatedId?.toString(),
+      relatedId: n.relatedId ? n.relatedId.toString() : undefined,
       createdAt: new Date(n.createdAt || Date.now()).toISOString(),
       updatedAt: new Date(n.updatedAt || Date.now()).toISOString(),
     };

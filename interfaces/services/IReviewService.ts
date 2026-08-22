@@ -1,28 +1,11 @@
-import { IReview } from "../../types/review.types";
-import { ReviewPagination } from "../../types/review.types";
-
-export interface CreateReviewInput {
-  bookingId: string;
-  rating: number;
-  reviewText: string;
-}
-
-export interface CreateReviewResult {
-  review: IReview;
-  isNew: boolean;
-}
-
-export interface ProviderReviewsResult {
-  reviews: IReview[];
-  pagination: ReviewPagination;
-}
+import { CreateReviewInputDTO, CreateReviewResultDTO, ProviderReviewsResultDTO, ReviewResponseDTO } from "../../dtos/review.dto";
 
 export interface IReviewService {
-  createReview(userId: string, input: CreateReviewInput): Promise<CreateReviewResult>;
+  createReview(userId: string, input: CreateReviewInputDTO): Promise<CreateReviewResultDTO>;
   getProviderReviews(
     providerId: string,
     page: number,
     limit: number
-  ): Promise<ProviderReviewsResult>;
-  likeReview(reviewId: string, providerUserId: string): Promise<IReview>;
+  ): Promise<ProviderReviewsResultDTO>;
+  likeReview(reviewId: string, providerUserId: string): Promise<ReviewResponseDTO>;
 }

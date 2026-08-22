@@ -57,7 +57,6 @@ export class BookingRepository
   }
 
   async findByIdWithProviderUser(id: string): Promise<IBooking | null> {
-  
     return this.model
       .findById(id)
       .populate("providerId")
@@ -165,6 +164,15 @@ export class BookingRepository
       .exec();
   }
 
+  async findSlotBooking(providerId: string, date: string, start: string): Promise<IBooking | null> {
+    return this.model.findOne({
+      providerId,
+      date,
+      "slot.start": start,
+      status: { $nin: ["cancelled"] },
+    } as FilterQuery<IBooking>).exec();
+  }
+
   async updateStatus(bookingId: string, data: Partial<IBooking>): Promise<IBooking | null> {
     return this.model.findByIdAndUpdate(bookingId, { $set: data }, { returnDocument: "after" }).exec();
   }
@@ -232,7 +240,6 @@ export class BookingRepository
       .exec();
   }
 
-
   async getPlatformRevenueByMonth(dateFilter: FilterQuery<IBooking> = {}): Promise<{ month: string; year: number; count: number }[]> {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const result = await this.model.aggregate([
@@ -260,6 +267,4 @@ export class BookingRepository
       count: r.count,
     }));
   }
-
- 
 }

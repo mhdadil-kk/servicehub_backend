@@ -1,9 +1,9 @@
-import { IMessage, IConversation } from "../../types/chat.types";
-import { IUser } from "../../types/user.types";
+import { IMessage, IConversation, IPopulatedParticipant } from "../../types/chat.types";
+import { MessageResponseDTO } from "../../dtos/chat.dto";
 
 export interface ConversationListItem {
   _id: string;
-  participants: (IUser & { profilePhoto?: string })[];
+  participants: IPopulatedParticipant[];
   bookingId?: string | null;
   lastMessage?: IMessage | null;
   unreadCount: number;
@@ -15,23 +15,23 @@ export interface ConversationListItem {
 export interface IChatService {
   getConversations(userId: string): Promise<ConversationListItem[]>;
   getOrCreateDirectConversation(userId: string, targetUserId: string): Promise<IConversation & { providerServiceName?: string }>;
-  getChatHistory(conversationIdOrBookingId: string, userId: string): Promise<IMessage[]>;
+  getChatHistory(conversationIdOrBookingId: string, userId: string): Promise<MessageResponseDTO[]>;
   saveMessage(
     conversationIdOrBookingId: string,
     senderId: string,
     senderRole: "user" | "provider",
     content: string
-  ): Promise<IMessage>;
+  ): Promise<MessageResponseDTO>;
   saveImageMessage(
     conversationId: string,
     senderId: string,
     senderRole: "user" | "provider",
     imageUrl: string,
     imagePublicId: string
-  ): Promise<IMessage>;
+  ): Promise<MessageResponseDTO>;
   markAsRead(conversationIdOrBookingId: string, userId: string): Promise<void>;
   markAsDelivered(userId: string): Promise<string[]>;
   markMessageDelivered(messageId: string): Promise<void>;
   deleteConversation(conversationId: string, userId: string): Promise<void>;
-  deleteMessage(messageId: string, userId: string): Promise<IMessage>;
+  deleteMessage(messageId: string, userId: string): Promise<MessageResponseDTO>;
 }

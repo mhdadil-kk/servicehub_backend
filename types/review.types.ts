@@ -1,8 +1,11 @@
+import mongoose from "mongoose";
+
 export interface IReview {
+  _id?: mongoose.Types.ObjectId;
   id: string;
-  bookingId: string;
-  providerId: string;
-  userId: string;
+  bookingId: string | mongoose.Types.ObjectId;
+  providerId: string | mongoose.Types.ObjectId;
+  userId: string | mongoose.Types.ObjectId | { _id: mongoose.Types.ObjectId; name?: string; profilePhoto?: string };
   rating: number;
   reviewText: string;
   likedByProvider: boolean;
@@ -15,21 +18,4 @@ export interface ReviewPagination {
   limit: number;
   total: number;
   totalPages: number;
-}
-
-export interface ReviewUserSnippet {
-  _id: string;
-  name: string;
-  profilePhoto?: string;
-}
-
-export interface ReviewResponse {
-  _id: string;
-  bookingId: string;
-  providerId: string;
-  userId: ReviewUserSnippet | string;
-  rating: number;
-  reviewText: string;
-  likedByProvider: boolean;
-  created_at: string;
 }

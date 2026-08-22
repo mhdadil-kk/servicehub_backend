@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import { IReportService } from "../interfaces/services/IReportService";
-import { ReportMapper } from "../mappers/report.mapper";
-import { createSuccessResponse } from "../types/response";
 import { HttpStatusCode } from "../types/http";
+import { createSuccessResponse } from "../types/response";
 import { SUCCESS_MESSAGES } from "../constants/messages";
 import { asyncHandler } from "../utils/async-handler";
 
@@ -11,13 +10,9 @@ export class ReportController {
 
   createReport = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const data = { ...req.body };
-    if (req.file) {
-      data.screenshot = req.file.path;
-    }
-    const report = await this._reportService.createReport(userId, data);
+    const report = await this._reportService.createReport(userId, req.body);
     res.status(HttpStatusCode.CREATED).json(
-      createSuccessResponse(ReportMapper.toResponse(report), SUCCESS_MESSAGES.REPORT_CREATED)
+      createSuccessResponse(report, SUCCESS_MESSAGES.REPORT_CREATED)
     );
   });
 
@@ -25,51 +20,46 @@ export class ReportController {
     const userId = req.user!.id;
     const reports = await this._reportService.getMyReports(userId);
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(
-        ReportMapper.toArrayResponse(reports),
-        SUCCESS_MESSAGES.REPORTS_FETCHED
-      )
+      createSuccessResponse({ reports }, SUCCESS_MESSAGES.REPORTS_FETCHED)
     );
   });
 
   getReportById = asyncHandler(async (req: Request, res: Response) => {
-    const reportId = req.params.id as string;
     const userId = req.user!.id;
     const role = req.user!.role;
-    const report = await this._reportService.getReportById(reportId, userId, role);
+    const report = await this._reportService.getReportById(req.params.id as string, userId, role);
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ReportMapper.toResponse(report), SUCCESS_MESSAGES.REPORTS_FETCHED)
+      createSuccessResponse(report, SUCCESS_MESSAGES.REPORTS_FETCHED)
     );
   });
 
   getAllReports = asyncHandler(async (req: Request, res: Response) => {
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 10;
-    const filter = {
-      status: req.query.status as string | undefined,
-      search: req.query.search as string | undefined,
-    };
-    const { reports, total } = await this._reportService.getAllReports(filter, page, limit);
+    const { status, search, page, limit } = req.query;
+    const result = await this._reportService.getAllReports(
+      { status: status as string, search: search as string },
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 10
+    );
+
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(
-        {
-          reports: ReportMapper.toArrayResponse(reports),
-          total,
-          page,
-          limit,
+      createSuccessResponse({
+        reports: result.reports,
+        pagination: {
+          page: Number(page) || 1,
+          limit: Number(limit) || 10,
+          total: result.total,
+          totalPages: Math.ceil(result.total / (Number(limit) || 10)),
         },
-        SUCCESS_MESSAGES.REPORTS_FETCHED
-      )
+      }, SUCCESS_MESSAGES.REPORTS_FETCHED)
     );
   });
 
   takeAction = asyncHandler(async (req: Request, res: Response) => {
-    const reportId = req.params.id as string;
+    const { id } = req.params;
     const { action, adminNotes } = req.body;
-
-    const report = await this._reportService.takeAction(reportId, action, adminNotes);
+    const report = await this._reportService.takeAction(id as string, action, adminNotes);
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ReportMapper.toResponse(report), SUCCESS_MESSAGES.REPORT_UPDATED)
+      createSuccessResponse(report, SUCCESS_MESSAGES.REPORT_UPDATED)
     );
   });
 }

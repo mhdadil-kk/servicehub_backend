@@ -1,81 +1,65 @@
-import { IConversation } from "../types/chat.types";
-
-export interface ParticipantDTO {
-  _id: string;
-  name: string;
-  profilePhoto?: string;
-  role?: string;
-}
-
-export interface BookingRefDTO {
-  _id: string;
-  date: string;
-  slot: { start: string; end: string };
-  status: string;
-}
-
-export interface ConversationResponseDTO {
-  _id: string;
-  participants: ParticipantDTO[];
-  bookingId?: BookingRefDTO | string | null;
-  lastMessage?: Record<string, unknown>;
-  unreadCount?: number;
-  providerServiceName?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { IConversation, IMessage } from "../types/chat.types";
+import { ConversationResponseDTO, ParticipantDTO, BookingRefDTO } from "../dtos/chat.dto";
+import { MessageMapper } from "./message.mapper";
 
 export class ConversationMapper {
-  static toResponse(conversation: IConversation & { toObject?: () => IConversation }): ConversationResponseDTO | null {
+  static toResponse(
+    conversation: IConversation & {
+      toObject?: () => IConversation;
+      unreadCount?: number;
+      providerServiceName?: string;
+    }
+  ): ConversationResponseDTO | null {
     if (!conversation) return null;
 
     const c = typeof conversation.toObject === 'function' ? conversation.toObject() : conversation;
 
-    const participants: ParticipantDTO[] = (c.participants || []).map((p: string | Record<string, unknown>) => {
-      if (typeof p === 'object' && p !== null) {
-        const pObj = p as { _id?: { toString: () => string }; id?: { toString: () => string }; name?: string; profilePhoto?: string; role?: string };
+    const participants: ParticipantDTO[] = (c.participants || []).map((p) => {
+      if (typeof p === 'object' && p !== null && '_id' in p) {
         return {
-          _id: (pObj._id || pObj.id)?.toString() ?? '',
-          name: pObj.name || '',
-          profilePhoto: pObj.profilePhoto,
-          role: pObj.role,
+          _id: p._id.toString(),
+          name: p.name || '',
+          profilePhoto: p.profilePhoto,
+          role: p.role,
         };
       }
-      return { _id: (p as unknown as { toString: () => string }).toString(), name: '' };
+      return { _id: p ? p.toString() : '', name: '' };
     });
 
-    let bookingId: BookingRefDTO | string | null = null;
+    let bookingRef: BookingRefDTO | string | undefined = undefined;
     if (c.bookingId) {
-      if (typeof c.bookingId === 'object' && c.bookingId !== null) {
-        const bObj = c.bookingId as unknown as { _id?: { toString: () => string }; date?: string; slot?: { start: string; end: string }; status?: string };
-        bookingId = {
-          _id: bObj._id?.toString() ?? (c.bookingId as unknown as { toString: () => string }).toString(),
-          date: bObj.date ?? '',
-          slot: bObj.slot ?? { start: '', end: '' },
-          status: bObj.status ?? '',
+      if (typeof c.bookingId === 'object' && '_id' in c.bookingId) {
+        const b = c.bookingId;
+        bookingRef = {
+          _id: b._id.toString(),
+          date: b.date,
+          slot: b.slot,
+          status: b.status,
         };
       } else {
-        bookingId = (c.bookingId as unknown as { toString: () => string }).toString();
+        bookingRef = c.bookingId.toString();
       }
     }
 
     return {
-      _id: c.id || (c as IConversation & { _id?: { toString: () => string } })._id?.toString() || "",
+      _id: c._id?.toString() || c.id || '',
       participants,
-      bookingId,
-      lastMessage: (c as IConversation & { lastMessage?: Record<string, unknown> }).lastMessage ?? undefined,
-      unreadCount: (c as IConversation & { unreadCount?: number }).unreadCount ?? 0,
-      providerServiceName: (c as IConversation & { providerServiceName?: string }).providerServiceName,
+      bookingId: bookingRef,
+      unreadCount: conversation.unreadCount || 0,
+      lastMessage: c.lastMessage ? MessageMapper.toResponse(c.lastMessage as IMessage) : null,
+      providerServiceName: conversation.providerServiceName,
       createdAt: new Date(c.createdAt || Date.now()).toISOString(),
       updatedAt: new Date(c.updatedAt || Date.now()).toISOString(),
     };
   }
 
-  static toDetailedResponse(conversation: IConversation & { toObject?: () => IConversation }): ConversationResponseDTO | null {
-    return this.toResponse(conversation);
-  }
-
-  static toArrayResponse(conversations: (IConversation & { toObject?: () => IConversation })[], _detailed?: boolean): ConversationResponseDTO[] {
-    return conversations.map(conv => this.toResponse(conv)!).filter(Boolean);
+  static toArrayResponse(
+    conversations: (IConversation & {
+      toObject?: () => IConversation;
+      unreadCount?: number;
+      providerServiceName?: string;
+    })[]
+  ): ConversationResponseDTO[] {
+    return conversations.map(c => this.toResponse(c)!);
   }
 }

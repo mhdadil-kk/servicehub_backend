@@ -1,4 +1,3 @@
-
 export const ERROR_MESSAGES = {
   USER_NOT_FOUND: "User not found with the provided identifier.",
   EMAIL_ALREADY_EXISTS: "Email address is already registered.",
@@ -20,6 +19,7 @@ export const ERROR_MESSAGES = {
   BOOKING_NOT_FOUND: "Booking not found.",
   NOT_AUTHORIZED_REVIEW: "Not authorized to review this booking.",
   BOOKING_NOT_REVIEWABLE: "Booking must be completed to leave a review.",
+  ONLY_COMPLETED_CAN_BE_REVIEWED: "Only completed bookings can be reviewed.",
   INVALID_BOOKING_ID: "Invalid booking ID format.",
   INVALID_PROVIDER_ID: "Invalid provider ID format.",
   INVALID_REVIEW_ID: "Invalid review ID format.",
@@ -35,6 +35,9 @@ export const ERROR_MESSAGES = {
   PAYMENT_NOT_REQUIRED: "Payment not required at this stage.",
   SESSION_ID_MISMATCH: "Session ID mismatch.",
   CHECKOUT_URL_MISSING: "Checkout URL was not returned.",
+  INVALID_PAYMENT_AMOUNT: "Invalid payment amount.",
+  PAYMENT_NOT_COMPLETED: "Payment was not completed.",
+  INSUFFICIENT_BALANCE: "Insufficient wallet balance.",
 
   PROFILE_NOT_FOUND: "Profile not found.",
   NO_DOCUMENTS_UPLOADED: "No documents uploaded.",
@@ -45,11 +48,15 @@ export const ERROR_MESSAGES = {
   BOOKING_DETAILS_REQUIRED: "All booking details are required.",
   SLOT_NOT_AVAILABLE: "The requested time slot is not available.",
   SLOT_ALREADY_BOOKED: "The requested time slot is already booked.",
+  BOOKING_NOT_PENDING: "Booking is not pending.",
   ONLY_PENDING_CAN_ACCEPT: "Only pending bookings can be accepted.",
   ONLY_CONFIRMED_CAN_COMPLETE: "Only confirmed bookings can be marked as completed.",
   CANNOT_CANCEL_BOOKING: "Cannot cancel this booking.",
+  CANNOT_CANCEL_COMPLETED: "Cannot cancel completed bookings.",
   CANCEL_WITHIN_2_HOURS: "Bookings cannot be cancelled within 2 hours of the scheduled time.",
   CANNOT_RESCHEDULE_BOOKING: "Cannot reschedule this booking.",
+  CANNOT_RESCHEDULE_IN_PROGRESS: "Cannot reschedule in-progress or completed bookings.",
+  RESCHEDULE_TOO_LATE: "Bookings cannot be rescheduled within 4 hours of the start time.",
   RESCHEDULE_WITHIN_2_HOURS: "Bookings cannot be rescheduled within 2 hours of the scheduled time.",
   UNAUTHORIZED_PROVIDER_BOOKING: "Unauthorized: You are not the provider for this booking.",
   BOOKING_NOT_CONFIRMED: "Booking must be confirmed to mark arrival.",
@@ -65,6 +72,7 @@ export const ERROR_MESSAGES = {
   REPORT_NOT_FOUND: "Report not found.",
   REPORT_FORBIDDEN: "You are not authorized to access this report.",
   REPORT_FIELDS_REQUIRED: "Report category and description are required.",
+  UNAUTHORIZED_ACTION: "Unauthorized report action.",
 
   CHAT_CONVERSATION_NOT_FOUND: "Conversation not found.",
   CHAT_ACCESS_DENIED: "Access denied to this conversation.",
@@ -81,7 +89,8 @@ export const SUCCESS_MESSAGES = {
   LOGIN_SUCCESS: "Login successful.",
   SIGNUP_SUCCESS: "Account created successfully.",
   OTP_SENT: "Verification code sent to your email.",
-  OTP_VERIFIED: "Email verified successfully.",
+  EMAIL_VERIFIED: "Email verified successfully.",
+  RESET_LINK_SENT: "Password reset link sent to your email.",
 
   USER_DELETED: "User account deleted successfully.",
   USER_UPDATED: "User account updated successfully.",

@@ -1,17 +1,15 @@
 import Stripe from "stripe";
-import { CheckoutSessionResult, CreateCheckoutParams, IPaymentGateway } from "./payment.gateway";
+import { CheckoutSessionResult, CreateCheckoutParams, IPaymentGateway, StripeSessionResult } from "./payment.gateway";
 import { InternalServerError } from "../utils/error";
 
 export class StripePaymentGateway implements IPaymentGateway {
-  private stripe: Stripe;
+  private readonly stripe: Stripe;
 
   constructor(secretKey: string) {
     if (!secretKey) {
       throw new InternalServerError("STRIPE_SECRET_KEY is not configured");
     }
-    this.stripe = new Stripe(secretKey, { 
-      apiVersion: "2024-04-10" as Stripe.StripeConfig["apiVersion"] 
-    });
+    this.stripe = new Stripe(secretKey);
   }
 
   async createCheckoutSession(params: CreateCheckoutParams): Promise<CheckoutSessionResult> {
@@ -40,6 +38,25 @@ export class StripePaymentGateway implements IPaymentGateway {
       throw new InternalServerError("Stripe did not return a checkout URL");
     }
 
-    return { sessionId: session.id, url: session.url };
+    return {
+      sessionId: session.id,
+      id: session.id,
+      url: session.url,
+      amount_total: session.amount_total,
+    };
+  }
+
+  async retrieveSession(sessionId: string): Promise<StripeSessionResult | null> {
+    try {
+      const session = await this.stripe.checkout.sessions.retrieve(sessionId);
+      return {
+        id: session.id,
+        payment_status: session.payment_status,
+        payment_intent: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
+        amount_total: session.amount_total,
+      };
+    } catch {
+      return null;
+    }
   }
 }

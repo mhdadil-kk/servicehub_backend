@@ -3,10 +3,7 @@ import { IProviderService } from "../interfaces/services/IProviderService";
 import { HttpStatusCode } from "../types/http";
 import { createSuccessResponse } from "../types/response";
 import { SUCCESS_MESSAGES } from "../constants/messages";
-import { ProviderProfileMapper } from "../mappers/providerProfile.mapper";
-import { ProviderAvailabilityMapper } from "../mappers/providerAvailability.mapper";
 import { asyncHandler } from "../utils/async-handler";
-
 
 export class ProviderController {
   constructor(private _providerService: IProviderService) {}
@@ -24,7 +21,7 @@ export class ProviderController {
     });
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_UPDATED)
+      createSuccessResponse(profile, SUCCESS_MESSAGES.PROFILE_UPDATED)
     );
   });
 
@@ -40,7 +37,7 @@ export class ProviderController {
     });
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.LOCATION_UPDATED)
+      createSuccessResponse(profile, SUCCESS_MESSAGES.LOCATION_UPDATED)
     );
   });
 
@@ -54,7 +51,7 @@ export class ProviderController {
     });
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.SERVICE_DETAILS_UPDATED)
+      createSuccessResponse(profile, SUCCESS_MESSAGES.SERVICE_DETAILS_UPDATED)
     );
   });
 
@@ -78,7 +75,7 @@ export class ProviderController {
     const profile = await this._providerService.uploadVerificationDocs(userId, documents);
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.DOCUMENTS_UPLOADED)
+      createSuccessResponse(profile, SUCCESS_MESSAGES.DOCUMENTS_UPLOADED)
     );
   });
 
@@ -87,7 +84,7 @@ export class ProviderController {
     const profile = await this._providerService.updateBankDetails(userId, req.body);
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.BANK_DETAILS_UPDATED)
+      createSuccessResponse(profile, SUCCESS_MESSAGES.BANK_DETAILS_UPDATED)
     );
   });
 
@@ -96,7 +93,7 @@ export class ProviderController {
     const profile = await this._providerService.resetForReapply(userId);
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_RESET)
+      createSuccessResponse(profile, SUCCESS_MESSAGES.PROFILE_RESET)
     );
   });
 
@@ -105,7 +102,7 @@ export class ProviderController {
     const profile = await this._providerService.getProfile(userId);
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ProviderProfileMapper.toResponse(profile), SUCCESS_MESSAGES.PROFILE_FETCHED)
+      createSuccessResponse(profile, SUCCESS_MESSAGES.PROFILE_FETCHED)
     );
   });
 
@@ -114,7 +111,7 @@ export class ProviderController {
     const availability = await this._providerService.getAvailability(userId);
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ProviderAvailabilityMapper.toResponse(availability), SUCCESS_MESSAGES.AVAILABILITY_FETCHED)
+      createSuccessResponse(availability, SUCCESS_MESSAGES.AVAILABILITY_FETCHED)
     );
   });
 
@@ -123,7 +120,7 @@ export class ProviderController {
     const availability = await this._providerService.updateAvailability(userId, req.body);
 
     res.status(HttpStatusCode.OK).json(
-      createSuccessResponse(ProviderAvailabilityMapper.toResponse(availability), SUCCESS_MESSAGES.AVAILABILITY_UPDATED)
+      createSuccessResponse(availability, SUCCESS_MESSAGES.AVAILABILITY_UPDATED)
     );
   });
 }

@@ -3,32 +3,34 @@ import { adminService } from "../di/container";
 import { AdminController } from "../controllers/admin.controller";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { roleMiddleware } from "../middlewares/role.middleware";
-
+import { ROUTES } from "../constants/routes";
 
 const router = Router();
 const adminController = new AdminController(adminService);
 
 router.use(authMiddleware, roleMiddleware("admin"));
 
-router.get("/users", adminController.getAllUsers);
-router.get("/providers", adminController.getProviders);
-router.patch("/users/:id/status", adminController.updateUserStatus);
-router.patch("/users/:id/unblock", adminController.unblockUser);
-router.delete("/users/:id", adminController.deleteUser);
+router.get(ROUTES.ADMIN.USERS, adminController.getAllUsers);
+router.get(ROUTES.ADMIN.PROVIDERS, adminController.getProviders);
+router.patch(ROUTES.ADMIN.USER_STATUS, adminController.updateUserStatus);
+router.patch(ROUTES.ADMIN.USER_UNBLOCK, adminController.unblockUser);
+router.delete(ROUTES.ADMIN.USER_BY_ID, adminController.deleteUser);
 
-router.post("/services", adminController.addService);
-router.get("/services", adminController.getAllServices);
-router.delete("/services/:id", adminController.deleteService);
+router.post(ROUTES.ADMIN.SERVICES, adminController.addService);
+router.get(ROUTES.ADMIN.SERVICES, adminController.getAllServices);
+router.delete(ROUTES.ADMIN.SERVICE_BY_ID, adminController.deleteService);
 
-router.get("/providers/pending", adminController.getPendingProviders);
-router.get("/providers/:id", adminController.getProviderDetail);
-router.patch("/providers/:providerId/verification", adminController.updateProviderVerification);
+router.get(ROUTES.ADMIN.PROVIDERS_PENDING, adminController.getPendingProviders);
+router.get(ROUTES.ADMIN.PROVIDER_BY_ID, adminController.getProviderDetail);
+router.patch(ROUTES.ADMIN.PROVIDER_VERIFICATION, adminController.verifyProvider);
 
-router.get("/dashboard/stats", adminController.getAdminStats);
-router.get("/dashboard/revenue", adminController.getAdminRevenue);
-router.get("/dashboard/user-growth", adminController.getUserGrowth);
+router.get(ROUTES.ADMIN.DASHBOARD_STATS, adminController.getDashboardStats);
+router.get(ROUTES.ADMIN.DASHBOARD_REVENUE, adminController.getRevenueReport);
 
-router.get("/reports", adminController.getAllReports);
-router.post("/reports/:reportId/resolve", adminController.resolveReport);
+router.get(ROUTES.ADMIN.REPORTS, adminController.getAllReports);
+router.post(ROUTES.ADMIN.REPORT_RESOLVE, adminController.resolveReport);
+
+router.get(ROUTES.ADMIN.ALL_BOOKINGS, adminController.getAllBookings);
+router.get(ROUTES.ADMIN.BOOKING_BY_ID, adminController.getBookingById);
 
 export default router;

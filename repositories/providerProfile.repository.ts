@@ -27,6 +27,10 @@ export class ProviderProfileRepository
     });
   }
 
+  async updateRatingAndReviews(providerId: string, averageRating: number, totalReviews: number): Promise<void> {
+    await this.updateRating(providerId, averageRating, totalReviews);
+  }
+
   async incrementRating(providerProfileId: string, rating: number): Promise<void> {
     await this.model.findByIdAndUpdate(
       providerProfileId,
@@ -156,4 +160,3 @@ export class ProviderProfileRepository
     return profiles.map((p: { _id: mongoose.Types.ObjectId }) => p._id.toString());
   }
 }
-

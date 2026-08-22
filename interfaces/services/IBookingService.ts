@@ -1,4 +1,4 @@
-import { AvailableSlot } from "../repositories/IBookingRepository";
+import { AvailableSlotDTO, DetailedBookingResponseDTO } from "../../dtos/booking.dto";
 import { IBooking } from "../../types/booking.types";
 
 export interface CreateBookingInput {
@@ -8,32 +8,27 @@ export interface CreateBookingInput {
   date: string;
   slot: { start: string; end: string };
   notes?: string;
-  rescheduledFrom?: string;
 }
 
 export interface IBookingService {
-  getAvailableSlots(providerProfileId: string, dateStr: string): Promise<AvailableSlot[]>;
-  createBooking(userId: string, data: CreateBookingInput): Promise<IBooking>;
-  getUserBookings(userId: string): Promise<IBooking[]>;
-  getProviderBookings(providerUserId: string): Promise<IBooking[]>;
-  getBookingDetail(bookingId: string, userId: string, role: string): Promise<IBooking>;
-  acceptBooking(bookingId: string, providerUserId: string): Promise<IBooking>;
-  updateBookingStatus(
-    bookingId: string,
-    providerUserId: string,
-    status: "confirmed" | "completed" | "cancelled"
-  ): Promise<IBooking>;
-  cancelBooking(bookingId: string, userId: string, role: string, reason: string): Promise<IBooking>;
-  rescheduleBooking(bookingId: string, userId: string, data: Partial<CreateBookingInput>): Promise<IBooking>;
-  providerRescheduleBooking(bookingId: string, providerUserId: string, data: Partial<CreateBookingInput>): Promise<IBooking>;
-  customerAcceptReschedule(bookingId: string, userId: string): Promise<IBooking>;
-  customerRejectReschedule(bookingId: string, userId: string): Promise<IBooking>;
-  generateArrivalOtp(bookingId: string, providerUserId: string): Promise<IBooking>;
-  verifyArrivalOtp(bookingId: string, providerUserId: string, otp: string): Promise<IBooking>;
+  getAvailableSlots(providerId: string, date: string): Promise<AvailableSlotDTO[]>;
+  createBooking(userId: string, data: CreateBookingInput): Promise<DetailedBookingResponseDTO>;
+  getUserBookings(userId: string): Promise<DetailedBookingResponseDTO[]>;
+  getProviderBookings(providerUserId: string): Promise<DetailedBookingResponseDTO[]>;
+  getBookingDetail(bookingId: string, userId: string, role: string): Promise<DetailedBookingResponseDTO>;
+  acceptBooking(bookingId: string, providerUserId: string): Promise<DetailedBookingResponseDTO>;
+  updateBookingStatus(bookingId: string, providerUserId: string, status: IBooking["status"]): Promise<DetailedBookingResponseDTO>;
+  cancelBooking(bookingId: string, userId: string, role: string, reason?: string): Promise<DetailedBookingResponseDTO>;
+  rescheduleBooking(bookingId: string, userId: string, data: Partial<CreateBookingInput>): Promise<DetailedBookingResponseDTO>;
+  providerRescheduleBooking(bookingId: string, providerUserId: string, data: Partial<CreateBookingInput>): Promise<DetailedBookingResponseDTO>;
+  customerAcceptReschedule(bookingId: string, userId: string): Promise<DetailedBookingResponseDTO>;
+  customerRejectReschedule(bookingId: string, userId: string): Promise<DetailedBookingResponseDTO>;
+  generateArrivalOtp(bookingId: string, providerUserId: string): Promise<DetailedBookingResponseDTO>;
+  verifyArrivalOtp(bookingId: string, providerUserId: string, otp: string): Promise<DetailedBookingResponseDTO>;
   generateCompletionOtp(
     bookingId: string,
     providerUserId: string,
     invoiceData: { baseCharge: number; extraCharges?: { description: string; amount: number }[] }
-  ): Promise<IBooking>;
-  verifyCompletionOtp(bookingId: string, providerUserId: string, otp: string): Promise<IBooking>;
+  ): Promise<DetailedBookingResponseDTO>;
+  verifyCompletionOtp(bookingId: string, providerUserId: string, otp: string): Promise<DetailedBookingResponseDTO>;
 }

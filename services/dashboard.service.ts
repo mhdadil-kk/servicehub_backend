@@ -6,25 +6,18 @@ import {
   ACTIVE_PROVIDER_BOOKING_STATUSES,
   COMPLETED_BOOKING_STATUS,
 } from "../constants/statuses";
-import { UserDashboardStats, ProviderDashboardStats } from "../types/dashboard.types";
 import { IDashboardService } from "../interfaces/services/IDashboardService";
+import { DashboardStatsDTO } from "../dtos/dashboard.dto";
+import { StatsMapper } from "../mappers/stats.mapper";
 
 export class DashboardService implements IDashboardService {
-  private _bookingRepository: IBookingRepository;
-  private _transactionRepository: ITransactionRepository;
-  private _providerProfileRepository: IProviderProfileRepository;
-  
   constructor(
-    bookingRepository: IBookingRepository,
-    transactionRepository: ITransactionRepository,
-    providerProfileRepository: IProviderProfileRepository
-  ) {
-    this._bookingRepository = bookingRepository;
-    this._transactionRepository = transactionRepository;
-    this._providerProfileRepository = providerProfileRepository;
-  }
+    private _bookingRepository: IBookingRepository,
+    private _transactionRepository: ITransactionRepository,
+    private _providerProfileRepository: IProviderProfileRepository
+  ) {}
 
-  async getUserDashboard(userId: string): Promise<UserDashboardStats> {
+  async getUserDashboard(userId: string): Promise<DashboardStatsDTO> {
     const [
       totalBookings,
       upcomingBookings,
@@ -39,19 +32,28 @@ export class DashboardService implements IDashboardService {
       this._bookingRepository.findRecentByUserId(userId, 5),
     ]);
 
-    return {
+    const rawStats: Record<string, unknown> = {
       totalBookings,
       upcomingBookings,
       completedBookings,
       totalSpent,
       recentBookings,
     };
+
+    return StatsMapper.toDashboardResponse(rawStats)!;
   }
 
-  async getProviderDashboard(userId: string): Promise<ProviderDashboardStats> {
+  async getProviderDashboard(userId: string): Promise<DashboardStatsDTO> {
     const provider = await this._providerProfileRepository.findByUserId(userId);
     if (!provider) {
-      return { totalRequests: 0, activeBookings: 0, completedJobs: 0, totalEarnings: 0, recentBookings: [] };
+      const emptyStats: Record<string, unknown> = { 
+        totalRequests: 0, 
+        activeBookings: 0, 
+        completedJobs: 0, 
+        totalEarnings: 0, 
+        recentBookings: [] 
+      };
+      return StatsMapper.toDashboardResponse(emptyStats)!;
     }
  
     const providerId = provider._id.toString();
@@ -72,12 +74,14 @@ export class DashboardService implements IDashboardService {
       this._bookingRepository.findRecentByProviderId(providerId, 5),
     ]);
 
-    return {
+    const rawStats: Record<string, unknown> = {
       totalRequests,
       activeBookings,
       completedJobs,
       totalEarnings,
       recentBookings,
     };
+
+    return StatsMapper.toDashboardResponse(rawStats)!;
   }
 }

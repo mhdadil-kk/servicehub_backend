@@ -23,6 +23,13 @@ export class ReviewRepository
       .exec() as unknown as IReview | null;
   }
 
+  async findByBookingId(bookingId: string): Promise<IReview | null> {
+    return this.model
+      .findOne({ bookingId } as FilterQuery<IReviewDocument>)
+      .populate("userId", "name profilePhoto")
+      .exec() as unknown as IReview | null;
+  }
+
   async findByProviderId(
     providerId: string,
     skip: number,
@@ -55,5 +62,23 @@ export class ReviewRepository
 
   async toggleLikeByProvider(id: string, liked: boolean): Promise<IReview | null> {
     return this.update(id, { likedByProvider: liked } as unknown as Partial<IReviewDocument>) as unknown as IReview | null;
+  }
+
+  async getProviderStats(providerId: string): Promise<{ averageRating: number; totalReviews: number }> {
+    const result = await this.model.aggregate([
+      { $match: { providerId } },
+      {
+        $group: {
+          _id: "$providerId",
+          averageRating: { $avg: "$rating" },
+          totalReviews: { $sum: 1 },
+        },
+      },
+    ]);
+    if (!result.length) return { averageRating: 0, totalReviews: 0 };
+    return {
+      averageRating: Math.round(result[0].averageRating * 10) / 10,
+      totalReviews: result[0].totalReviews,
+    };
   }
 }

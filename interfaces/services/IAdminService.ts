@@ -1,7 +1,10 @@
-import { IUser } from "../../types/user.types";
+import { UserResponseDTO } from "../../dtos/auth.dto";
 import { IService } from "../../types/service.types";
-import { IProviderProfile } from "../../types/providerProfile.types";
-import { IBooking } from "../../types/booking.types";
+import { ServiceResponseDTO } from "../../dtos/service.dto";
+import { ProviderProfileResponseDTO } from "../../dtos/provider.dto";
+import { BookingResponseDTO, DetailedBookingResponseDTO } from "../../dtos/booking.dto";
+import { ReportResponseDTO } from "../../dtos/report.dto";
+import { RevenueReportDTO } from "../../dtos/dashboard.dto";
 
 export interface AdminDashboardStats {
   totalUsers: number;
@@ -15,25 +18,21 @@ export interface AdminDashboardStats {
 }
 
 export interface IAdminService {
-  getAllUsers(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ users: IUser[], total: number }>;
-  getProviders(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ providers: IUser[], total: number }>;
-  updateUserStatus(id: string, status: string): Promise<IUser>;
-  unblockUser(id: string): Promise<IUser>;
+  getAllUsers(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ users: UserResponseDTO[]; total: number }>;
+  getProviders(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ providers: UserResponseDTO[]; total: number }>;
+  updateUserStatus(id: string, status: string): Promise<UserResponseDTO>;
+  unblockUser(id: string): Promise<UserResponseDTO>;
   deleteUser(id: string): Promise<void>;
-  addService(data: Partial<IService>): Promise<IService>;
-  getAllServices(): Promise<IService[]>;
+  addService(data: Partial<IService>): Promise<ServiceResponseDTO>;
+  getAllServices(): Promise<ServiceResponseDTO[]>;
   deleteService(id: string): Promise<void>;
-  getPendingProviders(): Promise<IProviderProfile[]>;
-  getProviderDetail(userId: string): Promise<IProviderProfile | null>;
+  getPendingProviders(): Promise<ProviderProfileResponseDTO[]>;
+  getProviderDetail(userId: string): Promise<ProviderProfileResponseDTO | null>;
   verifyProvider(userId: string, status: "approved" | "rejected", remarks?: string): Promise<void>;
   getDashboardStats(timeRange?: string): Promise<AdminDashboardStats>;
-  getAllBookings(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ bookings: IBooking[], total: number }>;
-  getBookingById(id: string): Promise<IBooking | null>;
-  getRevenueReport(timeRange?: string): Promise<{
-    totalRevenue: number;
-    revenueByMonth: { month: string; year: number; revenue: number }[];
-    totalBookings: number;
-    completedBookings: number;
-    platformFeeCollected: number;
-  }>;
+  getAllBookings(search?: string, status?: string, sort?: string, page?: number, limit?: number): Promise<{ bookings: (BookingResponseDTO | DetailedBookingResponseDTO)[]; total: number }>;
+  getBookingById(id: string): Promise<DetailedBookingResponseDTO | null>;
+  getRevenueReport(timeRange?: string): Promise<RevenueReportDTO>;
+  getAllReports(status?: string, page?: number, limit?: number): Promise<{ reports: ReportResponseDTO[]; total: number }>;
+  resolveReport(reportId: string, action: string, resolutionNotes?: string): Promise<ReportResponseDTO>;
 }

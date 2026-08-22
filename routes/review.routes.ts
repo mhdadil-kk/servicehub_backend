@@ -10,21 +10,15 @@ import { CreateReviewSchema, GetProviderReviewsSchema } from "../dtos/review.dto
 const router = Router();
 const reviewController = new ReviewController(reviewService);
 
-router.post(
-  ROUTES.REVIEWS.CREATE,
-  authMiddleware,
-  validate(CreateReviewSchema),
-  reviewController.createReview
-);
-router.get(
-  ROUTES.REVIEWS.BY_PROVIDER,
-  validate(GetProviderReviewsSchema),
-  reviewController.getProviderReviews
-);
-router.patch(ROUTES.REVIEWS.LIKE,
-  authMiddleware,
-  roleMiddleware("provider"),
-  reviewController.likeReview
-);
+router.post(ROUTES.REVIEWS.CREATE,authMiddleware,validate(CreateReviewSchema),reviewController.createReview);
+router.get( ROUTES.REVIEWS.BY_PROVIDER,  validate(GetProviderReviewsSchema),  reviewController.getProviderReviews);
+ 
+router.patch(ROUTES.REVIEWS.LIKE,authMiddleware,roleMiddleware("provider"),  reviewController.likeReview);
 
 export default router;
+
+
+
+
+
+
