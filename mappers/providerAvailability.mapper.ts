@@ -12,28 +12,10 @@ export class ProviderAvailabilityMapper {
     return {
       providerId: a.providerId ? a.providerId.toString() : "",
       isAvailable: a.isAvailable ?? true,
-      startDate: a.startDate,
-      endDate: a.endDate,
-      weeklySchedule: (a.weeklySchedule || []).map((s) => ({
-        day: s.day,
-        isAvailable: s.isAvailable,
-        slots: (s.slots || []).map((slot) => ({
-          start: slot.start,
-          end: slot.end,
-        })),
-      })),
-      dateOverrides: (a.dateOverrides || []).map((o) => ({
-        date: o.date,
-        isAvailable: o.isAvailable,
-        slots: (o.slots || []).map((slot) => ({
-          start: slot.start,
-          end: slot.end,
-        })),
-      })),
-      slots: (a.slots || []).map((slot) => ({
-        start: slot.start,
-        end: slot.end,
-      })),
+      startDate: a.startDate || "",
+      endDate: a.endDate || "",
+      weeklySchedule: a.weeklySchedule || {},
+      overrides: a.overrides || [],
       createdAt: new Date(a.createdAt || Date.now()).toISOString(),
       updatedAt: new Date(a.updatedAt || Date.now()).toISOString(),
     };

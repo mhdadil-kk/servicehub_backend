@@ -2,6 +2,7 @@ export const ERROR_MESSAGES = {
   USER_NOT_FOUND: "User not found with the provided identifier.",
   EMAIL_ALREADY_EXISTS: "Email address is already registered.",
   INVALID_CREDENTIALS: "Invalid email or password.",
+  INCORRECT_PASSWORD: "The current password you entered is incorrect.",
   UNAUTHORIZED: "You are not authorized to access this resource.",
   FORBIDDEN: "Access denied. Insufficient permissions.",
   OTP_EXPIRED: "The verification code has expired.",

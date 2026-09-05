@@ -2,6 +2,7 @@ import { IProviderProfileRepository } from "../interfaces/repositories/IProvider
 import { IProviderAvailabilityRepository } from "../interfaces/repositories/IProviderAvailabilityRepository";
 import { IUserRepository } from "../interfaces/repositories/IUserRepository";
 import { IProviderDocument, IProviderAvailability, IProviderProfile } from "../types/providerProfile.types";
+import { IUser } from "../types/user.types";
 import { NotFoundError, BadRequestError } from "../utils/error";
 import { ERROR_MESSAGES } from "../constants/messages";
 import { IProviderService } from "../interfaces/services/IProviderService";
@@ -22,10 +23,10 @@ export class ProviderService implements IProviderService {
     
     if (!profile) {
       profile = await this._providerProfileRepository.create({
-        userId: new mongoose.Types.ObjectId(userId) as unknown as string,
+        userId: new mongoose.Types.ObjectId(userId),
         onboardingStatus: "pending",
         onboardingStep: 1,
-      });
+      } as unknown as Partial<IProviderProfile>);
     }
 
     return ProviderProfileMapper.toResponse(profile);
@@ -35,20 +36,25 @@ export class ProviderService implements IProviderService {
     const profile = await this._providerProfileRepository.findByUserId(userId);
     if (!profile) throw new NotFoundError(ERROR_MESSAGES.PROFILE_NOT_FOUND);
 
-    await this._userRepository.updateById(userId, {
-      name: data.name,
-      phone: data.phone,
-    });
+    const userUpdate: Partial<IUser> = {};
+    if (data.name) userUpdate.name = data.name;
+    if (data.phone) userUpdate.phone = data.phone;
+    if (data.profilePhoto) userUpdate.profilePhoto = data.profilePhoto;
+
+    if (Object.keys(userUpdate).length > 0) {
+      await this._userRepository.updateById(userId, userUpdate);
+    }
+
+    const profileUpdate: Partial<IProviderProfile> = {};
+    if (data.bio !== undefined) profileUpdate.bio = data.bio;
+    if (data.profilePhoto) profileUpdate.profilePhoto = data.profilePhoto;
+    profileUpdate.onboardingStep = Math.max(profile.onboardingStep || 1, 2);
 
     const updated = await this._providerProfileRepository.updateById(
       profile._id?.toString() || "",
-      {
-        bio: data.bio,
-        profilePhoto: data.profilePhoto,
-        onboardingStep: Math.max(profile.onboardingStep, 2),
-      }
+      profileUpdate
     );
-    return ProviderProfileMapper.toResponse(updated)!;
+    return ProviderProfileMapper.toResponse(updated || profile)!;
   }
 
   async updateLocation(userId: string, data: { address?: string; latitude?: number; longitude?: number; serviceRadius?: number }): Promise<ProviderProfileResponseDTO> {

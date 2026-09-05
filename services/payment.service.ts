@@ -8,7 +8,6 @@ import { ERROR_MESSAGES } from "../constants/messages";
 import { IWalletService } from "../interfaces/services/IWalletService";
 import { CheckoutResultDTO, VerifyPaymentResultDTO, WebhookResultDTO } from "../dtos/payment.dto";
 import { PaymentMapper } from "../mappers/payment.mapper";
-import mongoose from "mongoose";
 
 export class PaymentService implements IPaymentService {
   constructor(
@@ -36,8 +35,8 @@ export class PaymentService implements IPaymentService {
       currency: "inr",
       productName: "ServiceHub Booking Payment",
       description: `Payment for booking ${bookingId}`,
-      successUrl: `${process.env.CLIENT_URL || "http://localhost:5173"}/booking/success?session_id={CHECKOUT_SESSION_ID}&booking_id=${bookingId}`,
-      cancelUrl: `${process.env.CLIENT_URL || "http://localhost:5173"}/booking/cancel?booking_id=${bookingId}`,
+      successUrl: `${process.env.CLIENT_URL || "http://localhost:5173"}/payment-success?session_id={CHECKOUT_SESSION_ID}&booking_id=${bookingId}`,
+      cancelUrl: `${process.env.CLIENT_URL || "http://localhost:5173"}/payment-cancel?booking_id=${bookingId}`,
       metadata: { bookingId, userId, status: booking.status },
     });
 
@@ -53,26 +52,33 @@ export class PaymentService implements IPaymentService {
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    if (booking.paymentStatus === "paid" || booking.paymentStatus === "fully_paid") {
-      return { 
-        booking: PaymentMapper.toWebhookResponse({ booking })?.booking || null, 
-        alreadyProcessed: true, 
-        message: "Payment already processed." 
-      };
+    const isFinalPayment = 
+      booking.status === "completed_pending_payment" || 
+      session.metadata?.status === "completed_pending_payment";
+
+    if (isFinalPayment) {
+      if (booking.paymentStatus === "fully_paid" || booking.status === "completed") {
+        return { 
+          booking: PaymentMapper.toWebhookResponse({ booking })?.booking || null, 
+          alreadyProcessed: true, 
+          message: "Payment already processed." 
+        };
+      }
+    } else {
+      if (booking.paymentStatus === "paid" || booking.paymentStatus === "fully_paid") {
+        return { 
+          booking: PaymentMapper.toWebhookResponse({ booking })?.booking || null, 
+          alreadyProcessed: true, 
+          message: "Payment already processed." 
+        };
+      }
     }
 
-    const isFinalPayment = booking.status === "completed_pending_payment";
     const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : undefined;
 
-    await this._transactionRepository.createTransaction({
-      walletId: new mongoose.Types.ObjectId().toString(), 
-      userId: booking.userId.toString(),
-      type: "debit",
-      amount: (session.amount_total || 0) / 100,
-      description: `Stripe Payment for booking`,
-      referenceId: bookingId,
-      status: "success",
-    });
+    const customerId = (typeof booking.userId === "object" && booking.userId !== null && "_id" in booking.userId)
+      ? String((booking.userId as { _id: unknown })._id)
+      : String(booking.userId);
 
     const updated = await this._bookingRepository.updateStatus(bookingId, {
       paymentStatus: isFinalPayment ? "fully_paid" : "paid",
@@ -82,11 +88,31 @@ export class PaymentService implements IPaymentService {
     
     if (updated) {
       await this._walletService.logExpense(
-        updated.userId.toString(),
+        customerId,
         (session.amount_total || 0) / 100,
         `Stripe Payment for booking`,
         bookingId
       );
+
+      if (isFinalPayment && booking.providerId) {
+        const providerProfileId = (typeof booking.providerId === "object" && booking.providerId !== null && "_id" in booking.providerId)
+          ? String((booking.providerId as { _id: unknown })._id)
+          : String(booking.providerId);
+
+        const providerProfile = await this._providerProfileRepository.findById(providerProfileId);
+        if (providerProfile) {
+          const providerUserId = (typeof providerProfile.userId === "object" && providerProfile.userId !== null && "_id" in providerProfile.userId)
+            ? String((providerProfile.userId as { _id: unknown })._id)
+            : String(providerProfile.userId);
+
+          await this._walletService.credit(
+            providerUserId,
+            booking.totalAmount - 100,
+            `Payment received for booking`,
+            bookingId
+          );
+        }
+      }
     }
 
     return { 
@@ -105,11 +131,24 @@ export class PaymentService implements IPaymentService {
       if (bookingId) {
         const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
         if (booking) {
-          if (booking.paymentStatus === "paid" || booking.paymentStatus === "fully_paid") {
-            return PaymentMapper.toWebhookResponse({ booking, alreadyProcessed: true });
+          const isFinal = 
+            booking.status === "completed_pending_payment" || 
+            metadata?.status === "completed_pending_payment";
+
+          if (isFinal) {
+            if (booking.paymentStatus === "fully_paid" || booking.status === "completed") {
+              return PaymentMapper.toWebhookResponse({ booking, alreadyProcessed: true });
+            }
+          } else {
+            if (booking.paymentStatus === "paid" || booking.paymentStatus === "fully_paid") {
+              return PaymentMapper.toWebhookResponse({ booking, alreadyProcessed: true });
+            }
           }
 
-          const isFinal = booking.status === "completed_pending_payment";
+          const customerId = (typeof booking.userId === "object" && booking.userId !== null && "_id" in booking.userId)
+            ? String((booking.userId as { _id: unknown })._id)
+            : String(booking.userId);
+
           const updated = await this._bookingRepository.updateStatus(bookingId, {
             paymentStatus: isFinal ? "fully_paid" : "paid",
             status: isFinal ? "completed" : "confirmed",
@@ -118,11 +157,31 @@ export class PaymentService implements IPaymentService {
           
           if (updated) {
             await this._walletService.logExpense(
-              updated.userId.toString(),
+              customerId,
               (Number(session.amount_total) || 0) / 100,
               `Stripe Webhook Payment`,
               bookingId
             );
+
+            if (isFinal && booking.providerId) {
+              const providerProfileId = (typeof booking.providerId === "object" && booking.providerId !== null && "_id" in booking.providerId)
+                ? String((booking.providerId as { _id: unknown })._id)
+                : String(booking.providerId);
+
+              const providerProfile = await this._providerProfileRepository.findById(providerProfileId);
+              if (providerProfile) {
+                const providerUserId = (typeof providerProfile.userId === "object" && providerProfile.userId !== null && "_id" in providerProfile.userId)
+                  ? String((providerProfile.userId as { _id: unknown })._id)
+                  : String(providerProfile.userId);
+
+                await this._walletService.credit(
+                  providerUserId,
+                  booking.totalAmount - 100,
+                  `Payment received for booking`,
+                  bookingId
+                );
+              }
+            }
           }
           return PaymentMapper.toWebhookResponse({ booking: updated, alreadyProcessed: false });
         }
@@ -135,9 +194,21 @@ export class PaymentService implements IPaymentService {
     const booking = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
     if (!booking) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
+    const isFinalPayment = booking.status === "completed_pending_payment";
+
+    if (isFinalPayment) {
+      if (booking.paymentStatus === "fully_paid" || booking.status === "completed") {
+        throw new BadRequestError("Booking payment has already been completed.");
+      }
+    } else {
+      if (booking.paymentStatus === "paid" || booking.paymentStatus === "fully_paid") {
+        throw new BadRequestError("Booking payment has already been completed.");
+      }
+    }
+
     const amount = booking.status === "awaiting_payment"
       ? 100
-      : booking.status === "completed_pending_payment"
+      : isFinalPayment
       ? booking.totalAmount - 100
       : 0;
 
@@ -147,7 +218,6 @@ export class PaymentService implements IPaymentService {
     if (wallet.balance < amount) throw new BadRequestError(ERROR_MESSAGES.INSUFFICIENT_BALANCE);
 
     await this._walletService.debit(userId, amount, `Wallet Payment for booking`, bookingId);
-    const isFinalPayment = booking.status === "completed_pending_payment";
 
     await this._bookingRepository.updateStatus(bookingId, {
       paymentStatus: isFinalPayment ? "fully_paid" : "paid",
@@ -155,10 +225,18 @@ export class PaymentService implements IPaymentService {
     });
 
     if (isFinalPayment && booking.providerId) {
-      const providerProfile = await this._providerProfileRepository.findById(booking.providerId.toString());
+      const providerProfileId = (typeof booking.providerId === "object" && booking.providerId !== null && "_id" in booking.providerId)
+        ? String((booking.providerId as { _id: unknown })._id)
+        : String(booking.providerId);
+
+      const providerProfile = await this._providerProfileRepository.findById(providerProfileId);
       if (providerProfile) {
+        const providerUserId = (typeof providerProfile.userId === "object" && providerProfile.userId !== null && "_id" in providerProfile.userId)
+          ? String((providerProfile.userId as { _id: unknown })._id)
+          : String(providerProfile.userId);
+
         await this._walletService.credit(
-          providerProfile.userId.toString(),
+          providerUserId,
           booking.totalAmount - 100, 
           `Payment received for booking`,
           bookingId

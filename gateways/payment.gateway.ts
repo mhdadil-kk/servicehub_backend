@@ -20,6 +20,7 @@ export interface StripeSessionResult {
   payment_status: string;
   payment_intent?: string | null;
   amount_total?: number | null;
+  metadata?: Record<string, string> | null;
 }
 
 export interface IPaymentGateway {

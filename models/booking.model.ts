@@ -29,8 +29,8 @@ const BookingSchema = new Schema<IBooking>({
   totalAmount:        { type: Number, default: 0 },
   paymentStatus:      { type: String, enum: ["pending", "paid", "failed", "fully_paid"], default: "pending" },
   stripeSessionId:    { type: String },
-  arrivalOtp:         { type: String, select: false },
-  completionOtp:      { type: String, select: false },
+  arrivalOtp:         { type: String },
+  completionOtp:      { type: String },
   finalInvoice: {
     baseCharge:   { type: Number },
     extraCharges: [{ description: { type: String }, amount: { type: Number } }],

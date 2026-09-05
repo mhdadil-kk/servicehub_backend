@@ -96,8 +96,8 @@ export class BookingController {
   generateArrivalOtp = asyncHandler(async (req: Request, res: Response) => {
     const bookingId = req.params.bookingId as string;
     const providerUserId = req.user!.id;
-    await this._bookingService.generateArrivalOtp(bookingId, providerUserId);
-    res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Arrival OTP sent to customer"));
+    const booking = await this._bookingService.generateArrivalOtp(bookingId, providerUserId);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Arrival OTP sent to customer"));
   });
 
   verifyArrivalOtp = asyncHandler(async (req: Request, res: Response) => {
@@ -111,8 +111,9 @@ export class BookingController {
   generateCompletionOtp = asyncHandler(async (req: Request, res: Response) => {
     const bookingId = req.params.bookingId as string;
     const providerUserId = req.user!.id;
-    await this._bookingService.generateCompletionOtp(bookingId, providerUserId, req.body);
-    res.status(HttpStatusCode.OK).json(createSuccessResponse(null, "Completion OTP and invoice sent to customer"));
+    const invoiceData = (req.body && 'invoiceData' in req.body) ? req.body.invoiceData : req.body;
+    const booking = await this._bookingService.generateCompletionOtp(bookingId, providerUserId, invoiceData);
+    res.status(HttpStatusCode.OK).json(createSuccessResponse(booking, "Completion OTP and invoice sent to customer"));
   });
 
   verifyCompletionOtp = asyncHandler(async (req: Request, res: Response) => {

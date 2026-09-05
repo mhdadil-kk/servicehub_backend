@@ -17,6 +17,13 @@ export class AuthRepository extends BaseRepository<IUser> implements IUserReposi
       .exec();
   }
 
+  async findByIdWithPassword(id: string): Promise<IUser | null> {
+    return this.model
+      .findOne({ _id: id, isDeleted: { $ne: true } } as mongoose.FilterQuery<IUser>)
+      .select("+password")
+      .exec();
+  }
+
   async findByEmail(email: string): Promise<IUser | null> {
     return this.model
       .findOne({ email, isDeleted: { $ne: true } } as mongoose.FilterQuery<IUser>)
@@ -35,7 +42,7 @@ export class AuthRepository extends BaseRepository<IUser> implements IUserReposi
     return users.map((u) => (u._id as { toString(): string }).toString());
   }
 
-  async countByRole(role: string, dateFilter: mongoose.FilterQuery<IUser> = {}): Promise<number> {
+  async countByRole(role: string, dateFilter: mongoose.FilterQuery<IUser> = {}): Promise<number> {  
     return this.model
       .countDocuments({ role, isDeleted: { $ne: true }, ...dateFilter } as mongoose.FilterQuery<IUser>)
       .exec();

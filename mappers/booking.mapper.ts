@@ -37,6 +37,8 @@ export class BookingMapper {
       notes: b.notes,
       cancelledBy: b.cancelledBy,
       cancellationReason: b.cancellationReason,
+      arrivalOtp: b.arrivalOtp ? "pending_verification" : undefined,
+      completionOtp: b.completionOtp ? "pending_verification" : undefined,
       finalInvoice: b.finalInvoice ? {
         baseCharge: b.finalInvoice.baseCharge,
         extraCharges: b.finalInvoice.extraCharges?.map(e => ({
@@ -58,16 +60,20 @@ export class BookingMapper {
     const b = typeof booking.toObject === 'function' ? booking.toObject() : booking;
     const result: DetailedBookingResponseDTO = { ...base };
 
-    if (b.providerId && typeof b.providerId === 'object' && '_id' in b.providerId) {
+          if (b.providerId && typeof b.providerId === 'object' && '_id' in b.providerId) {
       const p = b.providerId;
-      const userName = typeof p.userId === 'object' && p.userId !== null && 'name' in p.userId
-        ? p.userId.name || ""
-        : "";
+      const providerUser = typeof p.userId === 'object' && p.userId !== null ? p.userId : null;
 
       result.provider = {
         _id: p._id.toString(),
-        userId: { name: userName },
-        profilePhoto: p.profilePhoto,
+        userId: {
+          _id:          providerUser && '_id' in providerUser   ? providerUser._id.toString() : "",
+          name:         providerUser && 'name' in providerUser  ? providerUser.name  : "",
+          email:        providerUser && 'email' in providerUser ? providerUser.email : undefined, 
+          phone:        providerUser && 'phone' in providerUser ? providerUser.phone : undefined, 
+          profilePhoto: (providerUser && 'profilePhoto' in providerUser ? providerUser.profilePhoto : undefined) || p.profilePhoto,
+        },
+        profilePhoto: p.profilePhoto || (providerUser && 'profilePhoto' in providerUser ? providerUser.profilePhoto : undefined),
         hourlyRate: p.hourlyRate,
       };
       result.providerId = p._id.toString();
@@ -78,7 +84,10 @@ export class BookingMapper {
       result.user = {
         _id: u._id.toString(),
         name: u.name || "",
+        email: u.email,       
+        phone: u.phone, 
         profilePhoto: u.profilePhoto,
+
       };
       result.userId = u._id.toString();
     }

@@ -1,5 +1,6 @@
 import { IProviderProfile } from "../../types/providerProfile.types";
 import mongoose from "mongoose";
+import { IRepository } from "./IRepository";
 
 export interface FindApprovedProvidersOptions {
   serviceId?: string;
@@ -14,7 +15,7 @@ export interface FindApprovedProvidersOptions {
   serviceIds?: string[];
 }
 
-export interface IProviderProfileRepository {
+export interface IProviderProfileRepository extends IRepository<IProviderProfile> {
   findById(id: string): Promise<IProviderProfile | null>;
   findByUserId(userId: string): Promise<IProviderProfile | null>;
   findByUserIdWithDetails(userId: string): Promise<IProviderProfile | null>;

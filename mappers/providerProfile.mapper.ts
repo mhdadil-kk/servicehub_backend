@@ -60,12 +60,14 @@ export class ProviderProfileMapper {
 
     const p = typeof profile.toObject === "function" ? profile.toObject() : profile;
 
-    let userIdVal: PublicProviderProfileDTO["userId"] = p.userId ? p.userId.toString() : "";
+        let userIdVal: PublicProviderProfileDTO["userId"] = p.userId ? p.userId.toString() : "";
     if (p.userId && typeof p.userId === "object" && "_id" in p.userId) {
       const u = p.userId;
       userIdVal = {
         _id: u._id.toString(),
         name: u.name,
+        email: u.email,
+        phone: u.phone,
         profilePhoto: u.profilePhoto,
       };
     }

@@ -66,8 +66,16 @@ export class BookingRepository
   async findByIdWithProviderAndUser(id: string): Promise<IBooking | null> {
     return this.model
       .findById(id)
-      .populate("providerId")
-      .populate("userId")
+      .populate({
+        path: "providerId",
+        populate: {
+          path: "userId",
+          select: "name email phone profilePhoto",
+        },
+      })
+      .populate("userId", "name email phone profilePhoto")
+      .populate("serviceId", "name description basePrice")
+      .populate("addressId")
       .exec();
   }
 

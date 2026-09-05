@@ -3,12 +3,12 @@ import { BookingMapper } from "./booking.mapper";
 import { CheckoutResultDTO, WebhookResultDTO } from "../dtos/payment.dto";
 
 export class PaymentMapper {
-  static toCheckoutResponse(result: { id: string; url: string | null; amount_total: number | null } | null): CheckoutResultDTO | null {
+  static toCheckoutResponse(result: { id: string; url: string | null; amount_total?: number | null } | null): CheckoutResultDTO | null {
     if (!result) return null;
     return {
       sessionId: result.id,
       url: result.url,
-      amount: result.amount_total
+      amount: result.amount_total ?? null
     };
   }
 

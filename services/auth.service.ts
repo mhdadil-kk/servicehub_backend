@@ -155,7 +155,7 @@ export class AuthService implements IAuthService {
   }
 
   async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
-    const user = await this._userRepository.findById(userId);
+    const user = await this._userRepository.findByIdWithPassword(userId);
     if (!user || user.isDeleted) throw new UnauthorizedError("User not found or blocked");
     if (!user.password) throw new BadRequestError("User does not have a password set (e.g., registered via Google)");
 

@@ -72,9 +72,24 @@ export class AdminService implements IAdminService {
       this._userRepository.findAll(query, false, sortQuery, limit, skip),
       this._userRepository.count(query),
     ]);
+    const userIds = providers.map(p => (p._id || p.id).toString()).filter(Boolean);
+
+    const profiles = await this._providerProfileRepository.findAll({ userId: { $in: userIds } });
+    const profilePhotoMap = new Map<string, string>();
+    profiles.forEach(prof => {
+      if (prof.userId && prof.profilePhoto) {
+        profilePhotoMap.set(prof.userId.toString(), prof.profilePhoto);
+      }
+    });
+
+        const mapped = (UserMapper.toResponse(providers) as UserResponseDTO[]) || [];
+    const providersWithPhotos = mapped.map(u => ({
+      ...u,
+      profilePhoto: u.profilePhoto || profilePhotoMap.get(u.id) || undefined,
+    }));
 
     return {
-      providers: (UserMapper.toResponse(providers) as UserResponseDTO[]) || [],
+      providers: providersWithPhotos,
       total,
     };
   }

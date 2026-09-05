@@ -54,6 +54,7 @@ export class StripePaymentGateway implements IPaymentGateway {
         payment_status: session.payment_status,
         payment_intent: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
         amount_total: session.amount_total,
+        metadata: (session.metadata as Record<string, string>) || null,
       };
     } catch {
       return null;

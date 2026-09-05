@@ -22,7 +22,7 @@ router.get(ROUTES.BOOKINGS.DETAIL, bookingController.getBookingDetail);
 
 router.post(ROUTES.BOOKINGS.CREATE, roleMiddleware("user"), validate(CreateBookingSchema), bookingController.createBooking);
 router.get(ROUTES.BOOKINGS.MY_BOOKINGS, roleMiddleware("user"), bookingController.getUserBookings);
-router.post(ROUTES.BOOKINGS.CANCEL, roleMiddleware("user"), validate(CancelBookingSchema), bookingController.cancelBooking);
+router.post(ROUTES.BOOKINGS.CANCEL, roleMiddleware(["user", "provider"]), validate(CancelBookingSchema), bookingController.cancelBooking);
 router.post(ROUTES.BOOKINGS.RESCHEDULE, roleMiddleware("user"), validate(RescheduleBookingSchema), bookingController.rescheduleBooking);
 router.post(ROUTES.BOOKINGS.ACCEPT_RESCHEDULE, roleMiddleware("user"), bookingController.customerAcceptReschedule);
 router.post(ROUTES.BOOKINGS.REJECT_RESCHEDULE, roleMiddleware("user"), bookingController.customerRejectReschedule);

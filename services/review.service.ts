@@ -23,7 +23,11 @@ export class ReviewService implements IReviewService {
       throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
     }
 
-    if (booking.userId.toString() !== userId) {
+    const bookingUserId = (typeof booking.userId === "object" && booking.userId !== null && "_id" in booking.userId)
+      ? String((booking.userId as { _id: unknown })._id)
+      : String(booking.userId);
+
+    if (bookingUserId !== userId) {
       throw new ForbiddenError(ERROR_MESSAGES.NOT_AUTHORIZED_REVIEW);
     }
 
@@ -31,7 +35,9 @@ export class ReviewService implements IReviewService {
       throw new BadRequestError(ERROR_MESSAGES.ONLY_COMPLETED_CAN_BE_REVIEWED);
     }
 
-    const providerId = booking.providerId.toString();
+    const providerId = (typeof booking.providerId === "object" && booking.providerId !== null && "_id" in booking.providerId)
+      ? String((booking.providerId as { _id: unknown })._id)
+      : String(booking.providerId);
     const existingReview = await this._reviewRepository.findByBookingId(bookingId);
     
     if (existingReview) {

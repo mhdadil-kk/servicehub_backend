@@ -2,14 +2,10 @@ import { z } from "zod";
 
 export const ProfileUpdateSchema = z.object({
   body: z.object({
-    name: z.string().min(2, "Name must be at least 2 characters long").optional(),
-    phone: z.string().min(10, "Phone number must be at least 10 digits").optional(),
-    bio: z.string().min(20, "Bio should be at least 20 characters long").optional(),
-    serviceRadius: z.string().transform(val => Number(val)).optional(), 
-    address: z.string().min(5, "Address must be at least 5 characters long").optional(),
-    latitude: z.string().transform(val => Number(val)).optional(),
-    longitude: z.string().transform(val => Number(val)).optional(),
-  })
+    name: z.string().optional(),
+    phone: z.string().optional(),
+    bio: z.string().optional(),
+  }).passthrough(),
 });
 
 export const ServiceDetailsSchema = z.object({
@@ -44,10 +40,11 @@ export const BankDetailsSchema = z.object({
 
 export const UpdateAvailabilitySchema = z.object({
   body: z.object({
-    days: z.array(z.string()).optional(),
-    startTime: z.string().optional(),
-    endTime: z.string().optional(),
-  }),
+    startDate: z.string().nullable().optional(),
+    endDate: z.string().nullable().optional(),
+    weeklySchedule: z.any().optional(),
+    overrides: z.array(z.any()).optional(),
+  }).passthrough(),
 });
 
 export interface ProviderDocumentDTO {
@@ -94,6 +91,8 @@ export interface PublicProviderProfileDTO {
   userId: {
     _id?: string;
     name?: string;
+    email?: string;
+    phone?: string;
     profilePhoto?: string;
   } | string;
   serviceId?: {
@@ -134,9 +133,8 @@ export interface ProviderAvailabilityResponseDTO {
   isAvailable: boolean;
   startDate?: string;
   endDate?: string;
-  weeklySchedule: DayScheduleDTO[];
-  dateOverrides: DateOverrideDTO[];
-  slots: TimeSlotDTO[];
+  weeklySchedule: Record<string, DayScheduleDTO>;
+  overrides?: DateOverrideDTO[];
   createdAt: string;
   updatedAt: string;
 }

@@ -105,6 +105,8 @@ export interface BookingResponseDTO {
   notes?: string;
   cancelledBy?: string;
   cancellationReason?: string;
+  arrivalOtp?: string;
+  completionOtp?: string;
   finalInvoice?: {
     baseCharge?: number;
     extraCharges?: { description: string; amount: number }[];

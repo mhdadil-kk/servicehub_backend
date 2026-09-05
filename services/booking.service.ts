@@ -15,6 +15,7 @@ import { AvailableSlotDTO, DetailedBookingResponseDTO } from "../dtos/booking.dt
 import { BookingMapper } from "../mappers/booking.mapper";
 import mongoose from "mongoose";
 import { ACTIVE_SLOT_BOOKING_STATUSES } from "../constants/statuses";
+import { logger } from "../utils/logger";
 
 export class BookingService implements IBookingService {
   constructor(
@@ -265,26 +266,44 @@ export class BookingService implements IBookingService {
     }
 
     const cancelledByLabel = role === "user" ? "customer" : "provider";
-    const prov = booking.providerId;
-    const recipientUserId =
-      role === "user"
-        ? (typeof prov === "object" && prov !== null && "userId" in prov
-          ? String(prov.userId)
-          : undefined)
-        : customer.id;
+    let recipientUserId: string | undefined;
 
-    if (recipientUserId) {
-      await this._notificationService.create({
-        userId: recipientUserId,
-        title: "Booking Cancelled",
-        message: `Booking for ${booking.date} at ${booking.slot.start} was cancelled by the ${cancelledByLabel}.${refundAmount > 0 ? ` A refund of Rs.${refundAmount} has been processed to the wallet.` : ""
-          }`,
-        type: "warning",
-        relatedId: bookingId,
-      });
+    if (role === "user") {
+      const providerUser = this.getPopulatedProviderUser(booking);
+      if (providerUser) {
+        recipientUserId = providerUser.id;
+      } else {
+        const prov = booking.providerId;
+        const providerProfileId = typeof prov === "object" && prov !== null && "_id" in prov
+          ? String((prov as { _id: unknown })._id)
+          : String(prov);
+        const provProfile = await this._providerProfileRepository.findById(providerProfileId);
+        if (provProfile?.userId) {
+          recipientUserId = typeof provProfile.userId === "object" && provProfile.userId !== null && "_id" in provProfile.userId
+            ? String((provProfile.userId as { _id: unknown })._id)
+            : String(provProfile.userId);
+        }
+      }
+    } else {
+      recipientUserId = customer.id;
     }
 
-    return BookingMapper.toDetailedResponse(updated)!;
+    if (recipientUserId && recipientUserId !== "[object Object]") {
+      try {
+        await this._notificationService.create({
+          userId: recipientUserId,
+          title: "Booking Cancelled",
+          message: `Booking for ${booking.date} at ${booking.slot.start} was cancelled by the ${cancelledByLabel}.${refundAmount > 0 ? ` A refund of Rs.${refundAmount} has been processed to the wallet.` : ""}`,
+          type: "warning",
+          relatedId: bookingId,
+        });
+      } catch (notifErr) {
+        logger.warn(`Failed to send cancellation notification for booking ${bookingId}:`, notifErr);
+      }
+    }
+
+    const populated = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
+    return BookingMapper.toDetailedResponse(populated || updated)!;
   }
 
   async rescheduleBooking(bookingId: string, userId: string, data: Partial<CreateBookingInput>): Promise<DetailedBookingResponseDTO> {
@@ -387,22 +406,37 @@ export class BookingService implements IBookingService {
     const updated = await this._bookingRepository.updateStatus(bookingId, { status: "confirmed" });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    const prov = booking.providerId;
-    const providerProfileId = typeof prov === "object" && prov !== null && "userId" in prov
-      ? prov._id.toString()
-      : String(prov);
-    const provProfile = await this._providerProfileRepository.findById(providerProfileId);
-    if (provProfile) {
-      await this._notificationService.create({
-        userId: provProfile.userId.toString(),
-        title: "Reschedule Accepted",
-        message: `The customer accepted the new time: ${booking.date} at ${booking.slot.start}.`,
-        type: "success",
-        relatedId: bookingId,
-      });
+    const provUser = this.getPopulatedProviderUser(booking);
+    let provUserId = provUser?.id;
+    if (!provUserId) {
+      const prov = booking.providerId;
+      const providerProfileId = typeof prov === "object" && prov !== null && "_id" in prov
+        ? String((prov as { _id: unknown })._id)
+        : String(prov);
+      const provProfile = await this._providerProfileRepository.findById(providerProfileId);
+      if (provProfile?.userId) {
+        provUserId = typeof provProfile.userId === "object" && provProfile.userId !== null && "_id" in provProfile.userId
+          ? String((provProfile.userId as { _id: unknown })._id)
+          : String(provProfile.userId);
+      }
     }
 
-    return BookingMapper.toDetailedResponse(updated)!;
+    if (provUserId && provUserId !== "[object Object]") {
+      try {
+        await this._notificationService.create({
+          userId: provUserId,
+          title: "Reschedule Accepted",
+          message: `The customer accepted the new time: ${booking.date} at ${booking.slot.start}.`,
+          type: "success",
+          relatedId: bookingId,
+        });
+      } catch (notifErr) {
+        logger.warn(`Failed to send reschedule accept notification for booking ${bookingId}:`, notifErr);
+      }
+    }
+
+    const populated = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
+    return BookingMapper.toDetailedResponse(populated || updated)!;
   }
 
   async customerRejectReschedule(bookingId: string, userId: string): Promise<DetailedBookingResponseDTO> {
@@ -421,22 +455,37 @@ export class BookingService implements IBookingService {
     });
     if (!updated) throw new NotFoundError(ERROR_MESSAGES.BOOKING_NOT_FOUND);
 
-    const prov = booking.providerId;
-    const providerProfileId = typeof prov === "object" && prov !== null && "userId" in prov
-      ? prov._id.toString()
-      : String(prov);
-    const provProfile = await this._providerProfileRepository.findById(providerProfileId);
-    if (provProfile) {
-      await this._notificationService.create({
-        userId: provProfile.userId.toString(),
-        title: "Reschedule Rejected",
-        message: `The customer rejected the new booking time. The booking has been cancelled.`,
-        type: "warning",
-        relatedId: bookingId,
-      });
+    const provUser = this.getPopulatedProviderUser(booking);
+    let provUserId = provUser?.id;
+    if (!provUserId) {
+      const prov = booking.providerId;
+      const providerProfileId = typeof prov === "object" && prov !== null && "_id" in prov
+        ? String((prov as { _id: unknown })._id)
+        : String(prov);
+      const provProfile = await this._providerProfileRepository.findById(providerProfileId);
+      if (provProfile?.userId) {
+        provUserId = typeof provProfile.userId === "object" && provProfile.userId !== null && "_id" in provProfile.userId
+          ? String((provProfile.userId as { _id: unknown })._id)
+          : String(provProfile.userId);
+      }
     }
 
-    return BookingMapper.toDetailedResponse(updated)!;
+    if (provUserId && provUserId !== "[object Object]") {
+      try {
+        await this._notificationService.create({
+          userId: provUserId,
+          title: "Reschedule Rejected",
+          message: `The customer rejected the new booking time. The booking has been cancelled.`,
+          type: "warning",
+          relatedId: bookingId,
+        });
+      } catch (notifErr) {
+        logger.warn(`Failed to send reschedule reject notification for booking ${bookingId}:`, notifErr);
+      }
+    }
+
+    const populated = await this._bookingRepository.findByIdWithProviderAndUser(bookingId);
+    return BookingMapper.toDetailedResponse(populated || updated)!;
   }
 
   async generateArrivalOtp(bookingId: string, providerUserId: string): Promise<DetailedBookingResponseDTO> {
@@ -583,11 +632,15 @@ export class BookingService implements IBookingService {
 
   private assertProviderOwnsBooking(booking: IBooking, profile: IProviderProfile): void {
     const prov = booking.providerId;
-    const bookingProviderId = typeof prov === "object" && prov !== null && "userId" in prov
-      ? prov._id.toString()
+    const bookingProviderId = typeof prov === "object" && prov !== null && "_id" in prov
+      ? String((prov as { _id: unknown })._id)
       : String(prov);
 
-    if (bookingProviderId !== profile._id.toString()) {
+    const profileId = typeof profile._id === "object" && profile._id !== null && "_id" in profile._id
+      ? String((profile._id as { _id: unknown })._id)
+      : String(profile._id);
+
+    if (bookingProviderId !== profileId) {
       throw new ForbiddenError(ERROR_MESSAGES.UNAUTHORIZED_PROVIDER_BOOKING);
     }
   }
@@ -610,5 +663,24 @@ export class BookingService implements IBookingService {
       return { id: userId._id.toString(), email: userId.email };
     }
     return { id: String(userId) };
+  }
+
+  private getPopulatedProviderUser(booking: IBooking): { id: string; email?: string } | null {
+    const prov = booking.providerId;
+    if (typeof prov === "object" && prov !== null && "userId" in prov) {
+      const u = (prov as { userId: unknown }).userId;
+      if (typeof u === "object" && u !== null && "_id" in u) {
+        return {
+          id: String((u as { _id: unknown })._id),
+          email: "email" in u && typeof (u as { email?: unknown }).email === "string"
+            ? (u as { email: string }).email
+            : undefined,
+        };
+      }
+      if (u) {
+        return { id: String(u) };
+      }
+    }
+    return null;
   }
 }

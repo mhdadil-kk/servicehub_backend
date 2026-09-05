@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { AnyZodObject, ZodError } from "zod";
+import { AnyZodObject, ZodError, ZodIssue } from "zod";
 import { HttpStatusCode } from "../types/http";
 import { createErrorResponse } from "../types/response";
 
@@ -15,9 +15,10 @@ export const validate =
       next();
     } catch (error) {
       if (error instanceof ZodError) {
+        const issues: ZodIssue[] = (error.issues as ZodIssue[] | undefined) ?? (error.errors as ZodIssue[] | undefined) ?? [];
         return res.status(HttpStatusCode.BAD_REQUEST).json(
           createErrorResponse(
-            error.errors.map((e) => e.message).join(", "),
+            issues.map((e: ZodIssue) => e.message).join(", "),
             HttpStatusCode.BAD_REQUEST
           )
         );
