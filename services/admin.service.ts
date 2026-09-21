@@ -8,6 +8,7 @@ import { IAdminService, AdminDashboardStats } from "../interfaces/services/IAdmi
 import { IUser } from "../types/user.types";
 import { IService } from "../types/service.types";
 import { IBooking } from "../types/booking.types";
+import { ReportAction } from "../types/report.types";
 import { IProviderProfile } from "../types/providerProfile.types";
 import { NotFoundError, BadRequestError } from "../utils/error";
 import { FilterQuery } from "mongoose";
@@ -100,6 +101,7 @@ export class AdminService implements IAdminService {
 
     const updated = await this._userRepository.updateById(id, { status } as Partial<IUser>);
     return UserMapper.toResponse(updated) as UserResponseDTO;
+    
   }
 
   async unblockUser(id: string): Promise<UserResponseDTO> {
@@ -349,7 +351,7 @@ export class AdminService implements IAdminService {
     if (status) filter["status"] = status;
 
     const [reports, total] = await Promise.all([
-      this._reportRepository.findAllPopulated(filter, false, { createdAt: -1 }, limit, skip),
+      this._reportRepository.findAllPopulated(filter,{ createdAt: -1 }, limit, skip),
       this._reportRepository.count(filter),
     ]);
 
@@ -359,7 +361,7 @@ export class AdminService implements IAdminService {
     };
   }
 
-  async resolveReport(reportId: string, action: string, resolutionNotes?: string): Promise<ReportResponseDTO> {
+  async resolveReport(reportId: string, action: ReportAction, resolutionNotes?: string): Promise<ReportResponseDTO> {
     const report = await this._reportRepository.findById(reportId);
     if (!report) throw new NotFoundError("Report not found");
 

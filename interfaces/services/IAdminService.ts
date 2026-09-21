@@ -5,6 +5,7 @@ import { ProviderProfileResponseDTO } from "../../dtos/provider.dto";
 import { BookingResponseDTO, DetailedBookingResponseDTO } from "../../dtos/booking.dto";
 import { ReportResponseDTO } from "../../dtos/report.dto";
 import { RevenueReportDTO } from "../../dtos/dashboard.dto";
+import { ReportAction } from "../../types/report.types";
 
 export interface AdminDashboardStats {
   totalUsers: number;
@@ -34,5 +35,5 @@ export interface IAdminService {
   getBookingById(id: string): Promise<DetailedBookingResponseDTO | null>;
   getRevenueReport(timeRange?: string): Promise<RevenueReportDTO>;
   getAllReports(status?: string, page?: number, limit?: number): Promise<{ reports: ReportResponseDTO[]; total: number }>;
-  resolveReport(reportId: string, action: string, resolutionNotes?: string): Promise<ReportResponseDTO>;
+  resolveReport(reportId: string, action: ReportAction, resolutionNotes?: string): Promise<ReportResponseDTO>;
 }

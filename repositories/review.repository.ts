@@ -1,31 +1,27 @@
+import mongoose, { FilterQuery } from "mongoose";
 import { ReviewModel, IReviewDocument } from "../models/review.model";
 import { IReview } from "../types/review.types";
-import { BaseRepository } from "./base.repository";
-import { FilterQuery } from "mongoose";
-
 import { IReviewRepository } from "../interfaces/repositories/IReviewRepository";
 
-export class ReviewRepository
-  extends BaseRepository<IReviewDocument>
-  implements IReviewRepository
-{
-  constructor() {
-    super(ReviewModel);
-  }
-
+export class ReviewRepository implements IReviewRepository {
   async findByBookingAndUser(
     bookingId: string,
     userId: string
   ): Promise<IReview | null> {
-    return this.model
-      .findOne({ bookingId, userId } as FilterQuery<IReviewDocument>)
+    return ReviewModel
+      .findOne({
+        bookingId,
+        userId,
+      } as FilterQuery<IReviewDocument>)
       .populate("userId", "name profilePhoto")
       .exec() as unknown as IReview | null;
   }
 
   async findByBookingId(bookingId: string): Promise<IReview | null> {
-    return this.model
-      .findOne({ bookingId } as FilterQuery<IReviewDocument>)
+    return ReviewModel
+      .findOne({
+        bookingId,
+      } as FilterQuery<IReviewDocument>)
       .populate("userId", "name profilePhoto")
       .exec() as unknown as IReview | null;
   }
@@ -35,8 +31,10 @@ export class ReviewRepository
     skip: number,
     limit: number
   ): Promise<IReview[]> {
-    return this.model
-      .find({ providerId } as FilterQuery<IReviewDocument>)
+    return ReviewModel
+      .find({
+        providerId,
+      } as FilterQuery<IReviewDocument>)
       .populate("userId", "name profilePhoto")
       .sort({ created_at: -1 })
       .skip(skip)
@@ -45,9 +43,18 @@ export class ReviewRepository
   }
 
   async countByProviderId(providerId: string): Promise<number> {
-    return this.model
-      .countDocuments({ providerId } as FilterQuery<IReviewDocument>)
+    return ReviewModel
+      .countDocuments({
+        providerId,
+      } as FilterQuery<IReviewDocument>)
       .exec();
+  }
+
+  async findById(id: string): Promise<IReview | null> {
+    return ReviewModel
+      .findById(id)
+      .populate("userId", "name profilePhoto")
+      .exec() as unknown as IReview | null;
   }
 
   async create(data: {
@@ -57,16 +64,43 @@ export class ReviewRepository
     rating: number;
     reviewText: string;
   }): Promise<IReview> {
-    return super.create(data as unknown as Partial<IReviewDocument>) as unknown as IReview;
+    const review = await ReviewModel.create({
+      bookingId: new mongoose.Types.ObjectId(data.bookingId),
+      providerId: new mongoose.Types.ObjectId(data.providerId),
+      userId: new mongoose.Types.ObjectId(data.userId),
+      rating: data.rating,
+      reviewText: data.reviewText,
+    });
+
+    return {
+      ...review.toObject(),
+      id: review._id.toString(),
+    } as unknown as IReview;
   }
 
-  async toggleLikeByProvider(id: string, liked: boolean): Promise<IReview | null> {
-    return this.update(id, { likedByProvider: liked } as unknown as Partial<IReviewDocument>) as unknown as IReview | null;
+  async toggleLikeByProvider(
+    id: string,
+    liked: boolean
+  ): Promise<IReview | null> {
+    return ReviewModel
+      .findByIdAndUpdate(
+        id,
+        { likedByProvider: liked },
+        { returnDocument: "after" }
+      )
+      .populate("userId", "name profilePhoto")
+      .exec() as unknown as IReview | null;
   }
 
-  async getProviderStats(providerId: string): Promise<{ averageRating: number; totalReviews: number }> {
-    const result = await this.model.aggregate([
-      { $match: { providerId } },
+  async getProviderStats(
+    providerId: string
+  ): Promise<{ averageRating: number; totalReviews: number }> {
+    const result = await ReviewModel.aggregate([
+      {
+        $match: {
+          providerId: new mongoose.Types.ObjectId(providerId),
+        },
+      },
       {
         $group: {
           _id: "$providerId",
@@ -75,9 +109,17 @@ export class ReviewRepository
         },
       },
     ]);
-    if (!result.length) return { averageRating: 0, totalReviews: 0 };
+
+    if (!result.length) {
+      return {
+        averageRating: 0,
+        totalReviews: 0,
+      };
+    }
+
     return {
-      averageRating: Math.round(result[0].averageRating * 10) / 10,
+      averageRating:
+        Math.round(result[0].averageRating * 10) / 10,
       totalReviews: result[0].totalReviews,
     };
   }

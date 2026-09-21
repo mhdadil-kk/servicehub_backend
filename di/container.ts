@@ -20,6 +20,9 @@ import { env } from "../config/env";
 
 import { AuthService }         from "../services/auth.service";
 import { BookingService }      from "../services/booking.service";
+import { BookingQueryService } from "../services/booking/booking-query.service";
+import { BookingLifecycleService } from "../services/booking/booking-lifecycle.service";
+import { BookingOtpService }   from "../services/booking/booking-otp.service";
 import { ChatService }         from "../services/chat.service";
 import { AdminService }        from "../services/admin.service";
 import { NotificationService } from "../services/notification.service";
@@ -56,15 +59,32 @@ export const walletService = new WalletService(walletRepository, transactionRepo
 
 export const authService = new AuthService(userRepository, otpRepository, mailer);
 
-export const bookingService = new BookingService(
+export const bookingQueryService = new BookingQueryService(
   bookingRepository,
   providerProfileRepository,
-  providerAvailabilityRepository,
+  providerAvailabilityRepository
+);
+
+export const bookingLifecycleService = new BookingLifecycleService(
+  bookingRepository,
+  providerProfileRepository,
   conversationRepository,
   messageRepository,
   notificationService,
-  mailer,
   walletService
+);
+
+export const bookingOtpService = new BookingOtpService(
+  bookingRepository,
+  providerProfileRepository,
+  notificationService,
+  mailer
+);
+
+export const bookingService = new BookingService(
+  bookingQueryService,
+  bookingLifecycleService,
+  bookingOtpService
 );
 
 export const chatService = new ChatService(

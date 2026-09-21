@@ -41,10 +41,12 @@ export class BookingMapper {
       completionOtp: b.completionOtp ? "pending_verification" : undefined,
       finalInvoice: b.finalInvoice ? {
         baseCharge: b.finalInvoice.baseCharge,
-        extraCharges: b.finalInvoice.extraCharges?.map(e => ({
-          description: e.description,
-          amount: e.amount,
-        })) || []
+        extraCharges: b.finalInvoice.extraCharges?.map(
+          (e: { description: string; amount: number }) => ({
+            description: e.description,
+            amount: e.amount,
+          })
+        ) || []
       } : undefined,
       createdAt: new Date(b.createdAt || Date.now()).toISOString(),
       updatedAt: new Date(b.updatedAt || Date.now()).toISOString(),
@@ -60,17 +62,17 @@ export class BookingMapper {
     const b = typeof booking.toObject === 'function' ? booking.toObject() : booking;
     const result: DetailedBookingResponseDTO = { ...base };
 
-          if (b.providerId && typeof b.providerId === 'object' && '_id' in b.providerId) {
+    if (b.providerId && typeof b.providerId === 'object' && '_id' in b.providerId) {
       const p = b.providerId;
       const providerUser = typeof p.userId === 'object' && p.userId !== null ? p.userId : null;
 
       result.provider = {
         _id: p._id.toString(),
         userId: {
-          _id:          providerUser && '_id' in providerUser   ? providerUser._id.toString() : "",
-          name:         providerUser && 'name' in providerUser  ? providerUser.name  : "",
-          email:        providerUser && 'email' in providerUser ? providerUser.email : undefined, 
-          phone:        providerUser && 'phone' in providerUser ? providerUser.phone : undefined, 
+          _id: providerUser && '_id' in providerUser ? providerUser._id.toString() : "",
+          name: providerUser && 'name' in providerUser ? providerUser.name : "",
+          email: providerUser && 'email' in providerUser ? providerUser.email : undefined,
+          phone: providerUser && 'phone' in providerUser ? providerUser.phone : undefined,
           profilePhoto: (providerUser && 'profilePhoto' in providerUser ? providerUser.profilePhoto : undefined) || p.profilePhoto,
         },
         profilePhoto: p.profilePhoto || (providerUser && 'profilePhoto' in providerUser ? providerUser.profilePhoto : undefined),
@@ -84,8 +86,8 @@ export class BookingMapper {
       result.user = {
         _id: u._id.toString(),
         name: u.name || "",
-        email: u.email,       
-        phone: u.phone, 
+        email: u.email,
+        phone: u.phone,
         profilePhoto: u.profilePhoto,
 
       };

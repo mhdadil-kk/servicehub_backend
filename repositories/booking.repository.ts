@@ -7,8 +7,7 @@ import { IBookingRepository } from "../interfaces/repositories/IBookingRepositor
 
 export class BookingRepository
   extends BaseRepository<IBooking>
-  implements IBookingRepository
-{
+  implements IBookingRepository {
   constructor() {
     super(bookingModel);
   }
@@ -27,7 +26,7 @@ export class BookingRepository
     const filter: FilterQuery<IBooking> = { providerId };
     if (statuses?.length) filter.status = { $in: statuses };
     return this.count(filter);
-  }  
+  }
 
   async findRecentByUserId(userId: string, limit = 5): Promise<IBooking[]> {
     return this.model
@@ -179,6 +178,14 @@ export class BookingRepository
       "slot.start": start,
       status: { $nin: ["cancelled"] },
     } as FilterQuery<IBooking>).exec();
+  }
+
+  async findByProviderDateTime(
+    providerId: string,
+    date: string,
+    start: string
+  ): Promise<IBooking | null> {
+    return this.findSlotBooking(providerId, date, start);
   }
 
   async updateStatus(bookingId: string, data: Partial<IBooking>): Promise<IBooking | null> {

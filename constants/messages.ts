@@ -83,7 +83,6 @@ export const ERROR_MESSAGES = {
   INVALID_STATUS: "Invalid status value",
   USER_UPDATE_FAILED: "User could not be updated",
   SERVICE_NAME_EXISTS: "A service with this name already exists",
-  INCORRECT_PASSWORD: "Incorrect current password",
 };
 
 export const SUCCESS_MESSAGES = {
@@ -112,6 +111,7 @@ export const SUCCESS_MESSAGES = {
   PAYMENT_VERIFIED: "Payment verified.",
   PAYMENT_ALREADY_PROCESSED: "Already processed.",
   WEBHOOK_RECEIVED: "Webhook received.",
+  PAYMENT_SUCCESS: "Payment completed successfully",
 
   PROFILE_UPDATED: "Profile updated successfully.",
   LOCATION_UPDATED: "Location updated successfully.",

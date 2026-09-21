@@ -117,18 +117,24 @@ export interface BookingResponseDTO {
 
 export interface DetailedBookingResponseDTO extends BookingResponseDTO {
   provider?: {
-    _id: string;
-    userId: {
-      name: string;
-    };
-    profilePhoto?: string;
-    hourlyRate?: number;
-  };
-  user?: {
+  _id: string;
+  userId: {
     _id: string;
     name: string;
+    email?: string;
+    phone?: string;
     profilePhoto?: string;
   };
+  profilePhoto?: string;
+  hourlyRate?: number;
+};
+  user?: {
+  _id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  profilePhoto?: string;
+};
   service?: {
     _id: string;
     name: string;

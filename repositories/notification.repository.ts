@@ -1,4 +1,4 @@
-import { FilterQuery } from "mongoose";
+import mongoose, { FilterQuery } from "mongoose";
 import NotificationModel from "../models/notification.model";
 import { INotification } from "../types/notification.types";
 import { BaseRepository } from "./base.repository";
@@ -41,13 +41,43 @@ export class NotificationRepository
       .exec();
   }
 
+  async create(data: Partial<INotification>): Promise<INotification>;
   async create(data: {
-      userId: string;
-      title: string;
-      message: string;
-      type?: INotification["type"];
-      relatedId?: string;
-  }): Promise<INotification> {
-    return super.create(data as unknown as Partial<INotification>);
+    userId: string;
+    title: string;
+    message: string;
+    type?: INotification["type"];
+    relatedId?: string;
+  }): Promise<INotification>;
+  async create(
+    data:
+      | Partial<INotification>
+      | {
+          userId: string;
+          title: string;
+          message: string;
+          type?: INotification["type"];
+          relatedId?: string;
+        }
+  ): Promise<INotification> {
+    const normalized: Partial<INotification> = {
+      title: data.title,
+      message: data.message,
+      type: data.type,
+    };
+
+    if (typeof data.userId === "string") {
+      normalized.userId = new mongoose.Types.ObjectId(data.userId);
+    } else if (data.userId) {
+      normalized.userId = data.userId;
+    }
+
+    if (typeof data.relatedId === "string") {
+      normalized.relatedId = new mongoose.Types.ObjectId(data.relatedId);
+    } else if (data.relatedId) {
+      normalized.relatedId = data.relatedId;
+    }
+
+    return super.create(normalized);
   }
 }  

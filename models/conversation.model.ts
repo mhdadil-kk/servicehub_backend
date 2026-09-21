@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IConversationDocument extends Document {
+  id: string; 
   participants: mongoose.Types.ObjectId[];
   bookingId?: mongoose.Types.ObjectId | null;
   createdAt: Date;

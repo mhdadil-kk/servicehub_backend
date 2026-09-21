@@ -33,6 +33,8 @@ export interface IBookingRepository {
   findDetailForUser(bookingId: string, userId: string): Promise<IBooking | null>;
   findDetailForProvider(bookingId: string, providerProfileId: string): Promise<IBooking | null>;
   findSlotBooking(providerId: string, date: string, start: string): Promise<IBooking | null>;
+  findByProviderDateTime(providerId: string,date: string,start: string): Promise<IBooking | null>;
+
   updateStatus(bookingId: string, data: Partial<IBooking>): Promise<IBooking | null>;
   findAllWithFilters(query: mongoose.FilterQuery<IBooking>, sort: Record<string, mongoose.SortOrder>, skip: number, limit: number): Promise<IBooking[]>;
   countByFilter(query: mongoose.FilterQuery<IBooking>): Promise<number>;

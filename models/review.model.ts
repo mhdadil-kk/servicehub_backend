@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IReviewDocument extends Document {
+  id: string;
   bookingId: Types.ObjectId;
   providerId: Types.ObjectId;
   userId: Types.ObjectId;

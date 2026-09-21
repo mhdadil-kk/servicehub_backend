@@ -8,7 +8,12 @@ export class ReportMapper {
     const r = typeof report.toObject === 'function' ? report.toObject() : report;
 
     let reporter: ReportUserSnippetDTO | string = r.reporterId ? r.reporterId.toString() : "";
-    if (r.reporterId && typeof r.reporterId === 'object' && '_id' in r.reporterId) {
+    if (r.reporterId && typeof r.reporterId === 'object' && ('name' in r.reporterId ||
+      'email' in r.reporterId ||
+      'phone' in r.reporterId ||
+      'profilePhoto' in r.reporterId ||
+      'role' in r.reporterId)
+    ) {
       const u = r.reporterId;
       reporter = {
         _id: u._id.toString(),
@@ -21,7 +26,15 @@ export class ReportMapper {
     }
 
     let reported: ReportUserSnippetDTO | string = r.reportedId ? r.reportedId.toString() : "";
-    if (r.reportedId && typeof r.reportedId === 'object' && '_id' in r.reportedId) {
+    if (r.reportedId && typeof r.reportedId === 'object' &&
+      (
+        "name" in r.reportedId ||
+        "email" in r.reportedId ||
+        "phone" in r.reportedId ||
+        "profilePhoto" in r.reportedId ||
+        "role" in r.reportedId
+      )
+    ) {
       const u = r.reportedId;
       reported = {
         _id: u._id.toString(),
@@ -35,7 +48,8 @@ export class ReportMapper {
 
     let booking: ReportBookingSnippetDTO | string | undefined = undefined;
     if (r.bookingId) {
-      if (typeof r.bookingId === 'object' && '_id' in r.bookingId) {
+      if (typeof r.bookingId === 'object' && ('date' in r.bookingId || 'slot' in r.bookingId || 'status' in r.bookingId)
+      ) {
         const b = r.bookingId;
         booking = {
           _id: b._id.toString(),

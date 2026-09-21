@@ -73,8 +73,8 @@ export class ConversationRepository
       .exec() as unknown as IConversation | null;
   }
 
-  async findById(id: string): Promise<IConversation | null> {
-    return super.findById(id) as unknown as IConversation | null;
+  async findById(id: string): Promise<IConversationDocument | null> {
+    return super.findById(id);
   }
 
   async touchUpdatedAt(conversationId: string): Promise<void> {

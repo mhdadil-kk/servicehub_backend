@@ -3,7 +3,7 @@ import { CheckoutSessionResult, CreateCheckoutParams, IPaymentGateway, StripeSes
 import { InternalServerError } from "../utils/error";
 
 export class StripePaymentGateway implements IPaymentGateway {
-  private readonly stripe: Stripe;
+private readonly stripe: InstanceType<typeof Stripe>;
 
   constructor(secretKey: string) {
     if (!secretKey) {

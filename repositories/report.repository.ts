@@ -1,24 +1,22 @@
 import ReportModel, { IReportDocument } from "../models/report.model";
 import { IReport } from "../types/report.types";
-import { BaseRepository } from "./base.repository";
 import mongoose, { FilterQuery, SortOrder } from "mongoose";
 import { IReportRepository } from "../interfaces/repositories/IReportRepository";
 
-export class ReportRepository
-  extends BaseRepository<IReportDocument>
-  implements IReportRepository
-{
-  constructor() {
-    super(ReportModel);
-  }
-
+export class ReportRepository implements IReportRepository {
   async create(data: Partial<IReport>): Promise<IReport> {
-    return super.create(data as unknown as Partial<IReportDocument>) as unknown as IReport;
+    const report = await ReportModel.create(
+      data as unknown as Partial<IReportDocument>
+    );
+
+    return {
+      ...report.toObject(),
+      id: report._id.toString(),
+    } as IReport;
   }
 
   async findById(id: string): Promise<IReport | null> {
-    return this.model
-      .findById(id)
+    return ReportModel.findById(id)
       .populate("reporterId", "name email phone profilePhoto role")
       .populate("reportedId", "name email phone profilePhoto role")
       .populate("bookingId")
@@ -30,21 +28,21 @@ export class ReportRepository
   }
 
   async findByReporterId(reporterId: string): Promise<IReport[]> {
-    return this.model
-      .find({ reporterId } as FilterQuery<IReportDocument>)
+    return ReportModel.find({
+      reporterId,
+    } as FilterQuery<IReportDocument>)
       .populate("reportedId", "name email profilePhoto role")
       .sort({ createdAt: -1 })
       .exec() as unknown as IReport[];
   }
 
   async findAllPopulated(
-    filter: FilterQuery<IReportDocument> = {},
+    filter: FilterQuery<IReport> = {},
     sort: Record<string, SortOrder> = { createdAt: -1 },
     limit = 10,
     skip = 0
   ): Promise<IReport[]> {
-    return this.model
-      .find(filter)
+    return ReportModel.find(filter as FilterQuery<IReportDocument>)
       .populate("reporterId", "name email phone profilePhoto role")
       .populate("reportedId", "name email phone profilePhoto role")
       .populate("bookingId")
@@ -68,11 +66,19 @@ export class ReportRepository
 
     if (filter.search) {
       const userModel = mongoose.model("User");
+
       const matchedUsers = await userModel
-        .find({ name: { $regex: filter.search, $options: "i" } })
+        .find({
+          name: {
+            $regex: filter.search,
+            $options: "i",
+          },
+        })
         .select("_id")
         .exec();
+
       const userIds = matchedUsers.map((u) => u._id);
+
       query.$or = [
         { reporterId: { $in: userIds } },
         { reportedId: { $in: userIds } },
@@ -80,8 +86,7 @@ export class ReportRepository
     }
 
     const [reports, total] = await Promise.all([
-      this.model
-        .find(query)
+      ReportModel.find(query)
         .populate("reporterId", "name email phone profilePhoto role")
         .populate("reportedId", "name email phone profilePhoto role")
         .populate("bookingId")
@@ -89,18 +94,36 @@ export class ReportRepository
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.model.countDocuments(query).exec(),
+
+      ReportModel.countDocuments(query).exec(),
     ]);
 
-    return { reports: reports as unknown as IReport[], total };
+    return {
+      reports: reports as unknown as IReport[],
+      total,
+    };
   }
 
-  async update(id: string, data: Partial<IReport>): Promise<IReport | null> {
-    return this.model
-      .findByIdAndUpdate(id, data as unknown as mongoose.UpdateQuery<IReportDocument>, { returnDocument: "after" })
+  async update(
+    id: string,
+    data: Partial<IReport>
+  ): Promise<IReport | null> {
+    return ReportModel.findByIdAndUpdate(
+      id,
+      data as unknown as mongoose.UpdateQuery<IReportDocument>,
+      {
+        returnDocument: "after",
+      }
+    )
       .populate("reporterId", "name email phone profilePhoto role")
       .populate("reportedId", "name email phone profilePhoto role")
       .populate("bookingId")
       .exec() as unknown as IReport | null;
+  }
+
+  async count(filter: FilterQuery<IReport> = {}): Promise<number> {
+    return ReportModel.countDocuments(
+      filter as FilterQuery<IReportDocument>
+    ).exec();
   }
 }

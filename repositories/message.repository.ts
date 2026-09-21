@@ -17,7 +17,7 @@ export class MessageRepository
     bookingId: string;
     senderId: string;
     senderRole: "user" | "provider";
-  }): Promise<IMessage> {
+  }): Promise<IMessageDocument> {
     return this.create({
       conversationId: data.conversationId,
       bookingId: data.bookingId,
@@ -26,14 +26,14 @@ export class MessageRepository
       messageType: "booking_card",
       content: "Booking created",
       read: false,
-    } as unknown as Partial<IMessageDocument>) as unknown as IMessage;
+    } as unknown as Partial<IMessageDocument>);
   }
 
   async findLastByConversationId(conversationId: string): Promise<IMessage | null> {
     return this.model
       .findOne({ conversationId } as FilterQuery<IMessageDocument>)
       .sort({ createdAt: -1 })
-      .exec() as unknown as IMessage | null;
+      .exec();
   }
 
   async countUnread(conversationId: string, userId: string): Promise<number> {
@@ -48,7 +48,7 @@ export class MessageRepository
     return this.model
       .find({ conversationId } as FilterQuery<IMessageDocument>)
       .sort({ createdAt: 1 })
-      .exec() as unknown as IMessage[];
+      .exec();
   }
 
   async createTextMessage(data: {
@@ -57,7 +57,7 @@ export class MessageRepository
     senderId: string;
     senderRole: "user" | "provider";
     content: string;
-  }): Promise<IMessage> {
+  }): Promise<IMessageDocument> {
     return this.create({
       conversationId: data.conversationId,
       bookingId: data.bookingId ?? undefined,
@@ -67,7 +67,7 @@ export class MessageRepository
       messageType: "text",
       read: false,
       delivered: false,
-    } as unknown as Partial<IMessageDocument>) as unknown as IMessage;
+    } as unknown as Partial<IMessageDocument>);
   }
 
   async createImageMessage(data: {
@@ -77,7 +77,7 @@ export class MessageRepository
     senderRole: "user" | "provider";
     imageUrl: string;
     imagePublicId: string;
-  }): Promise<IMessage> {
+  }): Promise<IMessageDocument> {
     return this.create({
       conversationId: data.conversationId,
       bookingId: data.bookingId ?? undefined,
@@ -89,7 +89,7 @@ export class MessageRepository
       imagePublicId: data.imagePublicId,
       read: false,
       delivered: false,
-    } as unknown as Partial<IMessageDocument>) as unknown as IMessage;
+    } as unknown as Partial<IMessageDocument>);
   }
 
   async markReadByConversation(conversationId: string, userId: string): Promise<void> {
@@ -134,12 +134,12 @@ export class MessageRepository
     return this.update(messageId, { isDeleted: true, content: "This message was deleted" } as unknown as Partial<IMessageDocument>) as unknown as IMessage | null;
   }
 
-  async findById(messageId: string): Promise<IMessage | null> {
-    return this.model.findById(messageId).exec() as unknown as IMessage | null;
+  async findById(messageId: string): Promise<IMessageDocument | null> {
+    return this.model.findById(messageId).exec();
   }
 
-  async updateById(messageId: string, data: Partial<IMessage>): Promise<IMessage | null> {
-    return this.model.findByIdAndUpdate(messageId, data, { returnDocument: "after" }).exec() as unknown as IMessage | null;
+  async updateById(messageId: string, data: Partial<IMessageDocument>): Promise<IMessage | null> {
+    return this.model.findByIdAndUpdate(messageId, data, { returnDocument: "after" }).exec();
   }
 
   async deleteByConversationId(conversationId: string): Promise<void> {

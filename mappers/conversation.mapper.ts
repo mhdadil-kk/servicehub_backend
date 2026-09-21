@@ -15,7 +15,7 @@ export class ConversationMapper {
     const c = typeof conversation.toObject === 'function' ? conversation.toObject() : conversation;
 
     const participants: ParticipantDTO[] = (c.participants || []).map((p) => {
-      if (typeof p === 'object' && p !== null && '_id' in p) {
+      if (typeof p === 'object' && p !== null && 'name' in p) {
         return {
           _id: p._id.toString(),
           name: p.name || '',
@@ -28,7 +28,7 @@ export class ConversationMapper {
 
     let bookingRef: BookingRefDTO | string | undefined = undefined;
     if (c.bookingId) {
-      if (typeof c.bookingId === 'object' && '_id' in c.bookingId) {
+      if (typeof c.bookingId === 'object' && ('date' in c.bookingId || 'slot' in c.bookingId || 'status' in c.bookingId)) {
         const b = c.bookingId;
         bookingRef = {
           _id: b._id.toString(),

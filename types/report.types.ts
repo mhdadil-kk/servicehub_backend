@@ -1,5 +1,10 @@
 import mongoose from "mongoose";
-
+export type ReportAction =
+  | "warn"
+  | "block"
+  | "reject"
+  | "resolve"
+  | "none";
 export interface IReport {
   _id?: mongoose.Types.ObjectId;
   id: string;
@@ -11,7 +16,7 @@ export interface IReport {
   screenshot?: string;
   status: "pending" | "under_review" | "resolved" | "rejected";
   adminNotes?: string;
-  actionTaken?: "warn" | "block" | "reject" | "resolve" | "none";
+  actionTaken?:ReportAction;
   createdAt?: Date;
   updatedAt?: Date;
 }
