@@ -10,7 +10,10 @@ export const ProfileUpdateSchema = z.object({
 
 export const ServiceDetailsSchema = z.object({
   body: z.object({
-    serviceId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Service ID"),
+    serviceId: z.union([
+      z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Service ID"),
+      z.object({ _id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Service ID") }).transform((v) => v._id),
+    ]),
     hourlyRate: z.coerce.number().min(1, "Hourly rate must be at least 1"),
   })
 });

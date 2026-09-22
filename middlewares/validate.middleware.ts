@@ -7,11 +7,14 @@ export const validate =
   (schema: AnyZodObject) =>
   (req: Request, res: Response, next: NextFunction) => {
     try {
-      schema.parse({
+      const parsed = schema.parse({
         body: req.body,
         query: req.query,
         params: req.params,
-      });
+      }) as { body?: unknown; query?: unknown; params?: unknown };
+      if (parsed.body !== undefined) {
+        req.body = parsed.body;
+      }
       next();
     } catch (error) {
       if (error instanceof ZodError) {
